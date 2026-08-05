@@ -20,30 +20,69 @@ function sumOrNull(...vals) {
 
 // components を持つ指標は複数フィールドの合算値。一部だけnullの市町村がある場合、
 // 既知分だけの合計を値として扱い（sumOrNullの挙動どおり）、UI側では
-// 「不明分あり」の注記を出す判断材料として components を使う
+// 「不明分あり」の注記を出す判断材料として components を使う。
+// label/unit は固定文字列ではなく i18n.js のキー名を持たせ、表示のたびに
+// 現在の言語で引く（METRICSはモジュール読み込み時に1回だけ作られるオブジェクト
+// なので、ここに翻訳済み文字列を静的に持たせると言語切替に追随できない）
 const METRICS = [
-  { key: "evacuees", label: "避難者数", unit: "人", color: "#1baf7a",
+  { key: "evacuees", labelKey: "metricEvacueesLabel", unitKey: "metricEvacueesUnit", color: "#1baf7a",
     summaryKey: "evacuees", get: (m) => (m ? numOrNull(m.evacuees) : null) },
-  { key: "shelters", label: "避難所数", unit: "カ所", color: "#008300",
+  { key: "shelters", labelKey: "metricSheltersLabel", unitKey: "metricSheltersUnit", color: "#008300",
     summaryKey: "shelters", get: (m) => (m ? numOrNull(m.shelters) : null) },
-  { key: "deaths", label: "死者数", unit: "人", color: "#e34948",
+  { key: "deaths", labelKey: "metricDeathsLabel", unitKey: "metricDeathsUnit", color: "#e34948",
     summaryKey: "deaths", get: (m) => (m ? numOrNull(m.deaths) : null) },
-  { key: "injured", label: "負傷者数", unit: "人", color: "#e87ba4",
+  { key: "injured", labelKey: "metricInjuredLabel", unitKey: "metricInjuredUnit", color: "#e87ba4",
     summaryKey: "injured", components: ["injured_light", "injured_moderate", "injured_severe"],
     get: (m) => (m ? sumOrNull(m.injured_light, m.injured_moderate, m.injured_severe) : null) },
-  { key: "houses", label: "住家被害", unit: "棟", color: "#eb6834",
+  { key: "houses", labelKey: "metricHousesLabel", unitKey: "metricHousesUnit", color: "#eb6834",
     summaryKey: "houses", components: ["houses_full", "houses_large_half", "houses_half", "houses_partial", "houses_unclassified"],
     get: (m) => (m ? sumOrNull(m.houses_full, m.houses_large_half, m.houses_half, m.houses_partial, m.houses_unclassified) : null) },
-  { key: "water_outage", label: "断水戸数", unit: "戸", color: "#2a78d6",
+  { key: "water_outage", labelKey: "metricWaterOutageLabel", unitKey: "metricWaterOutageUnit", color: "#2a78d6",
     summaryKey: "water_outage", get: (m) => (m ? numOrNull(m.water_outage) : null) },
-  { key: "water_stations", label: "給水所数", unit: "カ所", color: "#4a3aa7",
+  { key: "water_stations", labelKey: "metricWaterStationsLabel", unitKey: "metricWaterStationsUnit", color: "#4a3aa7",
     get: (m) => (m ? numOrNull(m.water_stations) : null) },
-  { key: "power_outage", label: "停電戸数", unit: "戸", color: "#eda100",
+  { key: "power_outage", labelKey: "metricPowerOutageLabel", unitKey: "metricPowerOutageUnit", color: "#eda100",
     get: (m) => (m ? numOrNull(m.power_outage) : null) },
 ];
 
 function metricByKey(key) {
   return METRICS.find((m) => m.key === key);
+}
+
+function metricLabel(metric) {
+  return I18N.t(metric.labelKey);
+}
+function metricUnit(metric) {
+  return I18N.t(metric.unitKey);
+}
+
+// 市町村名・県名は言語によりローマ字表記へ切り替える（漢字圏はそのまま）
+function muniDisplayName(name) {
+  return I18N.muniName(name, I18N.getLang());
+}
+function prefDisplayName(pref) {
+  return I18N.prefName(pref, I18N.getLang());
+}
+
+// ニュースのカテゴリはデータ内では日本語キー（絞り込み状態のSetもこの値）。
+// 表示のときだけ i18n のカテゴリ名に引き直す
+const NEWS_CATEGORY_KEYS = {
+  "ライフライン": "catLifeline",
+  "交通": "catTransport",
+  "医療・福祉": "catMedical",
+  "生活・行政": "catDaily",
+  "産業": "catIndustry",
+};
+function newsCategoryLabel(cat) {
+  const key = NEWS_CATEGORY_KEYS[cat];
+  return key ? I18N.t(key) : cat;
+}
+
+// ニュース本文は公的資料の日本語原文のまま（翻訳しない方針）。
+// 日本語系以外のUI言語ではその旨の注記を一覧に添える
+function isJapaneseTextLang() {
+  const lang = I18N.getLang();
+  return lang === "ja" || lang === "easy-ja";
 }
 
 // 一部成分だけnullの「既知分のみの合計」かどうか（全部null=データなしとは区別する）
@@ -59,9 +98,9 @@ function hasUnknownComponent(metric, rec) {
 // 場合は合計値に「（ほか不明分あり）」を付けて、既知分のみの合計であることを示す
 function formatMetricValue(metric, rec) {
   const val = metric.get(rec);
-  if (val === null || val === undefined) return "データなし";
-  const base = `${formatNumber(val)}${metric.unit}`;
-  return hasUnknownComponent(metric, rec) ? `${base}（ほか不明分あり）` : base;
+  if (val === null || val === undefined) return I18N.t("valNoData");
+  const base = `${formatNumber(val)}${metricUnit(metric)}`;
+  return hasUnknownComponent(metric, rec) ? `${base}${I18N.t("valUnknownSuffix")}` : base;
 }
 
 // water_outage_max（ピーク時断水戸数）と water_outage（現在値）は別の報から
@@ -86,7 +125,9 @@ function isWaterSupplemented(rec) {
 
 function waterSourceBadgeHtml(rec) {
   if (!isWaterSupplemented(rec)) return "";
-  return `<span class="source-badge" title="熊本県資料が未報告のため${rec.water_outage_source}報の値を表示（熊本県合計には含まれない）">${rec.water_outage_source}報による</span>`;
+  const title = I18N.t("waterSourceBadgeTitleTemplate", { source: rec.water_outage_source });
+  const text = I18N.t("waterSourceBadgeTextTemplate", { source: rec.water_outage_source });
+  return `<span class="source-badge" title="${title}">${text}</span>`;
 }
 
 /* ===========================================================
@@ -137,19 +178,15 @@ function parseJST(iso) {
   return { y: +m[1], mo: +m[2], d: +m[3], h: +m[4], mi: +m[5] };
 }
 
-const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"];
-
-function weekdayJa(y, mo, d) {
-  return WEEKDAY_JA[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()];
-}
-
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
 
-function formatDateTimeJa(iso) {
-  const p = parseJST(iso);
-  return `${p.mo}月${p.d}日（${weekdayJa(p.y, p.mo, p.d)}）${pad2(p.h)}:${pad2(p.mi)}時点`;
+// 曜日名・書式は言語ごとに異なるため i18n.js (I18N.formatDateTime) に委譲する。
+// ここでの parseJST/pad2 は buildEventMeta の M/最大震度/発生日時テンプレート
+// 組み立てにだけ使う（そちらは i18n.js 側の日時フォーマッタとは別の文字列）
+function formatDateTimeLocalized(iso) {
+  return I18N.formatDateTime(iso);
 }
 
 function formatNumber(v) {
@@ -349,6 +386,7 @@ function updateLayerVisibilityForMode() {
   if (newsOverlayEl) newsOverlayEl.style.display = state.mapMode === "news" ? "" : "none";
   const legendEl = document.getElementById("legend");
   if (legendEl) legendEl.style.display = state.mapMode === "metric" ? "" : "none";
+  if (state.mapMode !== "metric") updateLabelHint([]);
 }
 
 function initMap() {
@@ -457,7 +495,7 @@ function addEpicenterMarker() {
   if (!ll) return;
   const el = document.createElement("div");
   el.className = "epicenter-marker";
-  el.innerHTML = '<div class="epicenter-mark">×</div><div class="epicenter-label">震央</div>';
+  el.innerHTML = `<div class="epicenter-mark">×</div><div class="epicenter-label">${I18N.t("epicenterLabel")}</div>`;
   new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([ll[1], ll[0]]).addTo(map);
 }
 
@@ -501,15 +539,15 @@ function showTooltip(feature, lngLat) {
   const metric = getCurrentMetric();
   const others = ["evacuees", "deaths", "water_outage"].filter((k) => k !== metric.key).slice(0, 2);
   const sourceBadge = metric.key === "water_outage" ? waterSourceBadgeHtml(rec) : "";
-  const mainLine = `${metric.label}: <strong>${formatMetricValue(metric, rec)}</strong>${sourceBadge}`;
+  const mainLine = `${metricLabel(metric)}: <strong>${formatMetricValue(metric, rec)}</strong>${sourceBadge}`;
   const subLines = others
     .map((k) => {
       const m = metricByKey(k);
       const v = m.get(rec);
-      return `<span>${m.label} ${typeof v === "number" ? formatMetricValue(m, rec) : "—"}</span>`;
+      return `<span>${metricLabel(m)} ${typeof v === "number" ? formatMetricValue(m, rec) : "—"}</span>`;
     })
     .join("");
-  const html = `<div class="tooltip-name">${name}</div><div class="tooltip-main">${mainLine}</div><div class="tooltip-sub">${subLines}</div>`;
+  const html = `<div class="tooltip-name">${muniDisplayName(name)}</div><div class="tooltip-main">${mainLine}</div><div class="tooltip-sub">${subLines}</div>`;
   tooltipPopup.setLngLat(lngLat).setHTML(html).addTo(map);
 }
 
@@ -635,7 +673,8 @@ function computeLabelLayout(topItems, allCircles, projectFn, viewport) {
     const p = projectFn(item.lng, item.lat);
 
     if (!isPointVisible(p, viewport)) {
-      results.push({ name: item.name, text: item.text, visible: false });
+      // 画面外は「密集で隠した」とは区別する（ズーム促しヒントの対象外）
+      results.push({ name: item.name, text: item.text, visible: false, offscreen: true });
       return;
     }
 
@@ -664,7 +703,8 @@ function computeLabelLayout(topItems, allCircles, projectFn, viewport) {
       placedBoxes.push(chosen);
       results.push({ name: item.name, text: item.text, x: chosen.x1, y: chosen.y1, w, h, visible: true });
     } else {
-      results.push({ name: item.name, text: item.text, visible: false });
+      // 全候補が衝突。ヒントからズームインできるよう座標を持たせておく
+      results.push({ name: item.name, text: item.text, visible: false, lng: item.lng, lat: item.lat });
     }
   });
 
@@ -682,7 +722,7 @@ function updateTop5(features, metric) {
   withVal.sort((a, b) => b.value - a.value);
   state.top5 = withVal.slice(0, 5).map((item) => ({
     ...item,
-    text: `${item.name} ${formatNumber(item.value)}${metric.unit}`,
+    text: `${muniDisplayName(item.name)} ${formatNumber(item.value)}${metricUnit(metric)}`,
   }));
   state.allCircles = withVal; // 衝突判定は上位5だけでなく全円が対象
   layoutOverlayLabels();
@@ -700,6 +740,43 @@ function layoutOverlayLabels() {
   const viewport = getMapViewportSize();
   const placements = computeLabelLayout(items, state.allCircles, (lng, lat) => map.project([lng, lat]), viewport);
   renderLabelDom(placements);
+  updateLabelHint(placements.filter((p) => !p.visible && !p.offscreen));
+}
+
+/* ===========================================================
+   密集ヒント: 上位5ラベルのうち衝突で隠れたものがあるとき、地図下部に
+   件数とズーム促しのピルを出す。タップで隠れた市町村を囲むようにズームする
+   （ズーム後は既存のmoveハンドラがレイアウトを再計算し、置けたラベルから復活する）
+   =========================================================== */
+
+function updateLabelHint(hiddenItems) {
+  const el = document.getElementById("label-hint");
+  if (!el) return;
+  if (state.mapMode !== "metric" || !hiddenItems.length) {
+    el.hidden = true;
+    state._labelHintTargets = null;
+    return;
+  }
+  el.hidden = false;
+  el.textContent = I18N.t("labelsHiddenZoomHint", { n: hiddenItems.length });
+  state._labelHintTargets = hiddenItems.map((h) => [h.lng, h.lat]);
+}
+
+function wireLabelHint() {
+  const el = document.getElementById("label-hint");
+  if (!el) return;
+  el.addEventListener("click", () => {
+    const targets = state._labelHintTargets;
+    if (!map || !targets || !targets.length) return;
+    const lngs = targets.map((c) => c[0]);
+    const lats = targets.map((c) => c[1]);
+    map.fitBounds(
+      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      // padding大きめ: 対象の円だけでなくラベルの置き場も画面内に必要なため。
+      // maxZoomは対象が1点だけのとき寄りすぎないための上限
+      { padding: 120, maxZoom: 11, duration: REDUCED_MOTION ? 0 : 600 }
+    );
+  });
 }
 
 function renderLabelDom(placements) {
@@ -775,9 +852,9 @@ function layoutNewsMarkers() {
     div.dataset.lat = m.lat;
     div.tabIndex = 0;
     div.setAttribute("role", "button");
-    div.setAttribute("aria-label", `${m.muni}: ニュース${m.count}件`);
+    div.setAttribute("aria-label", I18N.t("newsMarkerAriaLabelTemplate", { muni: muniDisplayName(m.muni), n: m.count }));
     const color = newsCategoryColor(m.dominantCategory);
-    div.innerHTML = `<span class="dot" style="background:${color}"></span>${m.muni}（${m.count}）`;
+    div.innerHTML = `<span class="dot" style="background:${color}"></span>${muniDisplayName(m.muni)}（${m.count}）`;
     const onActivate = () => {
       flyToMuni(m.muni);
       selectMunicipality(m.muni);
@@ -832,28 +909,28 @@ function buildExtrasNote(metricKey, extras) {
 
   if (metricKey === "deaths") {
     if (typeof extras.deaths_related_investigating === "number" && extras.deaths_related_investigating > 0) {
-      parts.push(`関連死調査中${formatNumber(extras.deaths_related_investigating)}人`);
+      parts.push(I18N.t("extrasDeathsInvestigating", { n: formatNumber(extras.deaths_related_investigating) }));
     }
     if (typeof extras.deaths_related_possible === "number" && extras.deaths_related_possible > 0) {
-      parts.push(`関連死疑い${formatNumber(extras.deaths_related_possible)}人`);
+      parts.push(I18N.t("extrasDeathsPossible", { n: formatNumber(extras.deaths_related_possible) }));
     }
     const u = extras.unidentified_remains;
     if (u && typeof u.deaths === "number" && u.deaths > 0) {
-      parts.push(`身元不明${formatNumber(u.deaths)}人`);
+      parts.push(I18N.t("extrasUnidentifiedDeaths", { n: formatNumber(u.deaths) }));
     }
   } else if (metricKey === "injured") {
     const u = extras.unidentified_remains;
     if (u) {
       const bits = [];
-      if (typeof u.injured_light === "number" && u.injured_light > 0) bits.push(`軽傷${formatNumber(u.injured_light)}人`);
-      if (typeof u.injured_moderate === "number" && u.injured_moderate > 0) bits.push(`中等症${formatNumber(u.injured_moderate)}人`);
-      if (typeof u.injured_severe === "number" && u.injured_severe > 0) bits.push(`重症${formatNumber(u.injured_severe)}人`);
-      if (bits.length) parts.push(`身元不明者${bits.join("・")}`);
+      if (typeof u.injured_light === "number" && u.injured_light > 0) bits.push(I18N.t("extrasInjuredLight", { n: formatNumber(u.injured_light) }));
+      if (typeof u.injured_moderate === "number" && u.injured_moderate > 0) bits.push(I18N.t("extrasInjuredModerate", { n: formatNumber(u.injured_moderate) }));
+      if (typeof u.injured_severe === "number" && u.injured_severe > 0) bits.push(I18N.t("extrasInjuredSevere", { n: formatNumber(u.injured_severe) }));
+      if (bits.length) parts.push(`${I18N.t("extrasUnidentifiedInjuredPrefix")}${bits.join("・")}`);
     }
   }
 
   if (!parts.length) return null;
-  return `※うち市町村未確定: ${parts.join("・")}`;
+  return `${I18N.t("extrasPrefix")}${parts.join("・")}`;
 }
 
 // 断水戸数だけ別枠: 熊本県資料が未報告の市町村を内閣府報の値で地図には
@@ -862,7 +939,7 @@ function buildExtrasNote(metricKey, extras) {
 function buildWaterSourceNote(snapshot) {
   const hasSupplemented = Object.values(snapshot.municipalities).some((rec) => isWaterSupplemented(rec));
   if (!hasSupplemented) return null;
-  return "※未報告の市町村は内閣府報の値で地図に表示（熊本県合計には含まれない）";
+  return I18N.t("extrasWaterSourceNote");
 }
 
 function buildStatNote(metric, snapshot) {
@@ -879,9 +956,9 @@ function updateStatHeader(snapshot, metric) {
   } else {
     total = sumAcrossMuniOrNull(snapshot, metric); // 熊本県の市町村のみを合算
   }
-  document.getElementById("stat-label").textContent = `熊本県合計 - ${metric.label}`;
-  document.getElementById("stat-value").textContent = total === null ? "データなし" : formatNumber(total);
-  document.getElementById("stat-unit").textContent = total === null ? "" : metric.unit;
+  document.getElementById("stat-label").textContent = I18N.t("statLabelTemplate", { metric: metricLabel(metric) });
+  document.getElementById("stat-value").textContent = total === null ? I18N.t("valNoData") : formatNumber(total);
+  document.getElementById("stat-unit").textContent = total === null ? "" : metricUnit(metric);
 
   const noteEl = document.getElementById("stat-extras-note");
   if (noteEl) {
@@ -899,7 +976,7 @@ function updateStatHeader(snapshot, metric) {
 function prefBadgeHtml(name) {
   const loc = muniData[name];
   if (!loc || loc.pref === "熊本県") return "";
-  return `<span class="pref-badge">${loc.pref}</span>`;
+  return `<span class="pref-badge">${prefDisplayName(loc.pref)}</span>`;
 }
 
 function updateRanking(snapshot, metric) {
@@ -921,7 +998,7 @@ function updateRanking(snapshot, metric) {
     const waterBadge = metric.key === "water_outage" ? waterSourceBadgeHtml(snapshot.municipalities[r.name]) : "";
     li.innerHTML = `
       <span class="rank-no">${i + 1}</span>
-      <span class="rank-name">${r.name}</span>${prefBadgeHtml(r.name)}${waterBadge}
+      <span class="rank-name">${muniDisplayName(r.name)}</span>${prefBadgeHtml(r.name)}${waterBadge}
       <span class="rank-bar-wrap"><span class="rank-bar" style="width:${barPct}%;background:${metric.color}"></span></span>
       <span class="rank-value tabular">${formatNumber(r.value)}</span>`;
     const onActivate = () => {
@@ -961,7 +1038,7 @@ function buildNewsFilterChips() {
     btn.className = "news-chip-btn";
     btn.dataset.cat = cat;
     btn.setAttribute("aria-pressed", state.newsActiveCategories.has(cat) ? "true" : "false");
-    btn.innerHTML = `<span class="dot" style="background:${newsCategoryColor(cat)}"></span>${cat}`;
+    btn.innerHTML = `<span class="dot" style="background:${newsCategoryColor(cat)}"></span>${newsCategoryLabel(cat)}`;
     btn.addEventListener("click", () => {
       if (state.newsActiveCategories.has(cat)) state.newsActiveCategories.delete(cat);
       else state.newsActiveCategories.add(cat);
@@ -989,14 +1066,14 @@ function renderNewsItem(ev, reportId) {
     li.tabIndex = 0;
     li.dataset.name = ev.muni;
   }
-  const muniLabel = ev.muni ? `<span class="news-muni-name">${ev.muni}</span>${prefBadgeHtml(ev.muni)}` : "";
+  const muniLabel = ev.muni ? `<span class="news-muni-name">${muniDisplayName(ev.muni)}</span>${prefBadgeHtml(ev.muni)}` : "";
   const badges =
-    (isNew ? '<span class="news-badge news-badge-new">NEW</span>' : "") +
-    (isUpdated ? '<span class="news-badge news-badge-updated">更新</span>' : "");
+    (isNew ? `<span class="news-badge news-badge-new">${I18N.t("newsBadgeNew")}</span>` : "") +
+    (isUpdated ? `<span class="news-badge news-badge-updated">${I18N.t("newsBadgeUpdated")}</span>` : "");
   li.innerHTML = `
     <div class="news-item-head">
       ${muniLabel}
-      <span class="news-cat-chip"><span class="dot" style="background:${newsCategoryColor(ev.category)}"></span>${ev.category}</span>
+      <span class="news-cat-chip"><span class="dot" style="background:${newsCategoryColor(ev.category)}"></span>${newsCategoryLabel(ev.category)}</span>
       ${badges}
     </div>
     <div class="news-item-text">${cleanNewsText(ev.text)}</div>`;
@@ -1026,7 +1103,7 @@ function buildGlobalNewsGroup(globals, reportId) {
   const details = document.createElement("details");
   details.className = "news-group";
   const summary = document.createElement("summary");
-  summary.textContent = `県内全域（${globals.length}件）`;
+  summary.textContent = I18N.t("newsGroupGlobalTemplate", { n: globals.length });
   details.appendChild(summary);
   const innerList = document.createElement("ul");
   innerList.className = "news-group-list";
@@ -1042,16 +1119,24 @@ function updateNewsPanel(filteredEvents, reportId) {
   listEl.innerHTML = "";
 
   if (!newsData) {
-    listEl.innerHTML = '<li class="news-empty">ニュースデータを読み込めませんでした。</li>';
+    listEl.innerHTML = `<li class="news-empty">${I18N.t("newsEmptyNoData")}</li>`;
     return;
   }
   if (!reportId) {
-    listEl.innerHTML = '<li class="news-empty">この時点に対応する報がありません。</li>';
+    listEl.innerHTML = `<li class="news-empty">${I18N.t("newsEmptyNoReport")}</li>`;
     return;
   }
   if (!filteredEvents.length) {
-    listEl.innerHTML = '<li class="news-empty">この時点・カテゴリに該当するニュースはありません。</li>';
+    listEl.innerHTML = `<li class="news-empty">${I18N.t("newsEmptyNoMatch")}</li>`;
     return;
+  }
+
+  // ニュース本文は日本語原文のまま載せる方針のため、日本語系以外のUIでは注記を添える
+  if (!isJapaneseTextLang()) {
+    const notice = document.createElement("li");
+    notice.className = "news-empty news-translation-note";
+    notice.textContent = I18N.t("newsTranslationNotice");
+    listEl.appendChild(notice);
   }
 
   const globals = globalNewsEvents(filteredEvents);
@@ -1063,7 +1148,7 @@ function updateNewsPanel(filteredEvents, reportId) {
   if (muniEvents.length) {
     const label = document.createElement("li");
     label.className = "news-group-label";
-    label.textContent = "市町村別";
+    label.textContent = I18N.t("newsGroupMuniLabel");
     listEl.appendChild(label);
     [...muniEvents]
       .sort((a, b) => a.muni.localeCompare(b.muni, "ja"))
@@ -1118,7 +1203,7 @@ function computeLegendGeometry(steps, globalMax, metric) {
     const r = radii[i];
     const cy = baselineY - r;
     const topY = cy - r;
-    const label = `${formatNumber(v)}${metric.unit}`;
+    const label = `${formatNumber(v)}${metricUnit(metric)}`;
     return { value: v, r, cx, cy, topY, lineEndX: cx + r + LEGEND_LEADER_LEN, label };
   });
 
@@ -1149,25 +1234,25 @@ function buildLegendSvg(geometry, metric) {
         `<text class="tabular" x="${it.lineEndX + LEGEND_LABEL_GAP}" y="${it.topY}" dominant-baseline="middle" font-size="${LEGEND_LABEL_FONT_SIZE}" font-weight="700">${it.label}</text>`
     )
     .join("");
-  const ariaLabel = `円の大きさの目安: ${items.map((it) => it.label).join("、")}`;
+  const ariaLabel = `${I18N.t("legendTitleDefault")}: ${items.map((it) => it.label).join("、")}`;
   return `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="${ariaLabel}">${circles}${labels}</svg>`;
 }
 
 function updateLegend(metric, globalMax) {
-  document.getElementById("legend-title").textContent = `円の大きさ（${metric.label}）`;
+  document.getElementById("legend-title").textContent = I18N.t("legendTitleTemplate", { metric: metricLabel(metric) });
   const steps = legendSteps(globalMax);
 
   const wrap = document.getElementById("legend-circles");
   if (!steps.length) {
     wrap.innerHTML = "";
-    wrap.textContent = "データなし";
+    wrap.textContent = I18N.t("valNoData");
   } else {
     const geometry = computeLegendGeometry(steps, globalMax, metric);
     wrap.innerHTML = buildLegendSvg(geometry, metric);
   }
 
   const noteEl = document.getElementById("legend-note");
-  if (noteEl) noteEl.textContent = "小さな中空の点 = 0（報告あり）／表示なし = 未報告";
+  if (noteEl) noteEl.textContent = I18N.t("legendNote");
 }
 
 /* ===========================================================
@@ -1187,19 +1272,19 @@ function selectMunicipality(name) {
 function renderNewsDetail(name) {
   const contentEl = document.getElementById("detail-content");
   const loc = muniData[name];
-  contentEl.innerHTML = `<div class="detail-head"><h3>${name}</h3><span class="detail-chip">${
-    loc ? loc.pref : ""
+  contentEl.innerHTML = `<div class="detail-head"><h3>${muniDisplayName(name)}</h3><span class="detail-chip">${
+    loc ? prefDisplayName(loc.pref) : ""
   }</span></div><ul class="news-list" id="detail-news-list"></ul>`;
   const listEl = document.getElementById("detail-news-list");
 
   if (!newsData) {
-    listEl.innerHTML = '<li class="news-empty">ニュースデータを読み込めませんでした。</li>';
+    listEl.innerHTML = `<li class="news-empty">${I18N.t("newsEmptyNoData")}</li>`;
     return;
   }
   const reportId = currentReportId(newsData, currentSnapshot().id);
   const events = eventsForReport(newsData, reportId).filter((e) => e.muni === name);
   if (!events.length) {
-    listEl.innerHTML = '<li class="news-empty">この時点のニュースはありません。</li>';
+    listEl.innerHTML = `<li class="news-empty">${I18N.t("newsEmptyNoneAtPoint")}</li>`;
     return;
   }
   events.forEach((e) => listEl.appendChild(renderNewsItem(e, reportId)));
@@ -1209,8 +1294,7 @@ function renderDetail() {
   const contentEl = document.getElementById("detail-content");
   const name = state.selected;
   if (!name) {
-    contentEl.innerHTML =
-      '<div class="detail-empty">地図の円、または左の一覧の市町村をクリックすると詳細が表示されます。</div>';
+    contentEl.innerHTML = `<div class="detail-empty">${I18N.t("detailPlaceholder")}</div>`;
     return;
   }
 
@@ -1227,10 +1311,10 @@ function renderDetail() {
 
   // パネルを閉じるボタンは常設の panel-head 側（detail-panel-close）にあるため、
   // ここでは市町村名と県バッジだけを出す
-  let html = `<div class="detail-head"><h3>${name}</h3><span class="detail-chip">${loc ? loc.pref : ""}</span></div>`;
+  let html = `<div class="detail-head"><h3>${muniDisplayName(name)}</h3><span class="detail-chip">${loc ? prefDisplayName(loc.pref) : ""}</span></div>`;
 
   if (!rec) {
-    html += '<div class="detail-empty">この時点のデータはありません。</div>';
+    html += `<div class="detail-empty">${I18N.t("detailNoDataAtPoint")}</div>`;
     contentEl.innerHTML = html;
     return;
   }
@@ -1247,14 +1331,14 @@ function renderDetail() {
       else deltaHtml = '<span class="dm-delta flat">±0</span>';
     }
     const isCurrent = m.key === state.metric;
-    const unknownNote = hasUnknownComponent(m, rec) ? "（ほか不明分あり：一部の内訳が未報告のため既知分のみの合計）" : null;
+    const unknownNote = hasUnknownComponent(m, rec) ? I18N.t("unknownComponentNote") : null;
     const sourceNote = m.key === "water_outage" && isWaterSupplemented(rec)
-      ? `内閣府報の値で表示（熊本県資料は未報告のため熊本県合計には含まれない）`
+      ? I18N.t("waterSourceNoteDetail")
       : null;
     html += `<li class="${isCurrent ? "is-current" : ""}">
       <div class="dm-row">
         <span class="dm-dot" style="background:${m.color}"></span>
-        <span class="dm-label">${m.label}</span>
+        <span class="dm-label">${metricLabel(m)}</span>
         <span class="dm-value tabular">${typeof val === "number" ? formatNumber(val) : "—"}</span>
         ${deltaHtml}
       </div>
@@ -1265,14 +1349,16 @@ function renderDetail() {
   html += "</ul>";
 
   const waterBits = [];
-  if (isWaterPeakValid(rec)) waterBits.push(`断水ピーク時: ${formatNumber(rec.water_outage_max)}戸`);
-  if (rec.water_period) waterBits.push(`給水期間: ${rec.water_period}`);
+  if (isWaterPeakValid(rec)) {
+    waterBits.push(I18N.t("waterPeakTemplate", { value: `${formatNumber(rec.water_outage_max)}${I18N.t("metricWaterOutageUnit")}` }));
+  }
+  if (rec.water_period) waterBits.push(I18N.t("waterPeriodTemplate", { value: rec.water_period }));
   if (rec.water_note) waterBits.push(rec.water_note);
   if (waterBits.length) {
     html += `<div class="water-note">${waterBits.join("　／　")}</div>`;
   }
 
-  html += `<div class="sparkline-wrap"><h2>推移（${getCurrentMetric().label}）</h2><div id="sparkline-container"></div></div>`;
+  html += `<div class="sparkline-wrap"><h2>${I18N.t("sparklineHeadingTemplate", { metric: metricLabel(getCurrentMetric()) })}</h2><div id="sparkline-container"></div></div>`;
 
   contentEl.innerHTML = html;
   renderSparkline(name);
@@ -1285,7 +1371,7 @@ function renderSparkline(name) {
   const pts = data.snapshots.map((s) => (s.municipalities[name] ? metric.get(s.municipalities[name]) : null));
   const validVals = pts.filter((v) => typeof v === "number");
   if (!validVals.length) {
-    container.innerHTML = '<div class="detail-empty">データなし</div>';
+    container.innerHTML = `<div class="detail-empty">${I18N.t("valNoData")}</div>`;
     return;
   }
   const max = Math.max(...validVals);
@@ -1308,19 +1394,19 @@ function renderSparkline(name) {
     dots.push(
       `<circle cx="${px}" cy="${py}" r="${isCurrent ? 5 : 3}" fill="${
         isCurrent ? metric.color : "#fff"
-      }" stroke="${metric.color}" stroke-width="1.5"><title>${formatDateTimeJa(data.snapshots[i].datetime)}: ${formatNumber(
+      }" stroke="${metric.color}" stroke-width="1.5"><title>${formatDateTimeLocalized(data.snapshots[i].datetime)}: ${formatNumber(
         v
-      )}${metric.unit}</title></circle>`
+      )}${metricUnit(metric)}</title></circle>`
     );
   });
 
   const currentVal = pts[state.snapshotIndex];
   const currentLabel =
     typeof currentVal === "number"
-      ? `現在時点: ${formatNumber(currentVal)}${metric.unit}`
-      : "現在時点: データなし";
+      ? I18N.t("sparklineCurrentTemplate", { value: `${formatNumber(currentVal)}${metricUnit(metric)}` })
+      : I18N.t("sparklineCurrentNoData");
 
-  container.innerHTML = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${metric.label}の推移（${n}時点）">
+  container.innerHTML = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${I18N.t("sparklineHeadingTemplate", { metric: metricLabel(metric) })}">
     <path d="${pathParts.join(" ")}" fill="none" stroke="${metric.color}" stroke-width="2.5"/>
     ${dots.join("")}
   </svg>
@@ -1333,17 +1419,17 @@ function renderSparkline(name) {
 
 function renderTable(snapshot) {
   const container = document.getElementById("table-container");
-  // formatDateTimeJa は末尾に「時点」まで含むため、ここで重ねて付けない
-  let html = `<table class="data-table"><caption>${formatDateTimeJa(
-    snapshot.datetime
-  )}のデータ。「—」はデータなし（未公表）、「＊」は一部内訳が不明で既知分のみの合計、「†」は熊本県資料未報告のため内閣府報の値で補完を表す。</caption><thead><tr><th scope="col">市町村</th>`;
+  // tableCaption の {date} には formatDateTimeLocalized（「時点」相当まで含む）を渡す
+  let html = `<table class="data-table"><caption>${I18N.t("tableCaption", {
+    date: formatDateTimeLocalized(snapshot.datetime),
+  })}</caption><thead><tr><th scope="col">${I18N.t("tableColMuni")}</th>`;
   METRICS.forEach((m) => {
-    html += `<th scope="col">${m.label}<br>(${m.unit})</th>`;
+    html += `<th scope="col">${metricLabel(m)}<br>(${metricUnit(m)})</th>`;
   });
   html += "</tr></thead><tbody>";
   Object.keys(muniData).forEach((name) => {
     const rec = snapshot.municipalities[name];
-    html += `<tr><th scope="row">${name}${prefBadgeHtml(name)}</th>`;
+    html += `<tr><th scope="row">${muniDisplayName(name)}${prefBadgeHtml(name)}</th>`;
     METRICS.forEach((m) => {
       const val = rec ? m.get(rec) : null;
       if (typeof val !== "number") {
@@ -1384,7 +1470,7 @@ function togglePlay() {
     return;
   }
   if (state.snapshotIndex >= data.snapshots.length - 1) setSnapshotIndex(0);
-  document.getElementById("btn-play").textContent = "一時停止 ❚❚";
+  document.getElementById("btn-play").textContent = I18N.t("tlPause");
   state.playTimer = setInterval(() => {
     if (state.snapshotIndex >= data.snapshots.length - 1) {
       stopPlay();
@@ -1399,7 +1485,7 @@ function stopPlay() {
     clearInterval(state.playTimer);
     state.playTimer = null;
   }
-  document.getElementById("btn-play").textContent = "再生 ▶";
+  document.getElementById("btn-play").textContent = I18N.t("tlPlay");
 }
 
 /* ===========================================================
@@ -1452,28 +1538,30 @@ function initPanelState() {
    =========================================================== */
 
 function updateHeaderDateTime(snapshot) {
-  document.getElementById("current-datetime").textContent = formatDateTimeJa(snapshot.datetime);
+  document.getElementById("current-datetime").textContent = formatDateTimeLocalized(snapshot.datetime);
   const linksEl = document.getElementById("source-links");
 
   // ニュースマップ中は、その時点に対応する内閣府報へのリンクを出典として明示する
   // （数値マップ側の出典表示には一切手を入れない）
   if (state.mapMode === "news") {
     if (!newsData) {
-      linksEl.innerHTML = "出典: ニュースデータを読み込めませんでした";
+      linksEl.innerHTML = I18N.t("sourcePrefix") + I18N.t("sourceNewsUnavailable");
       return;
     }
     const reportId = currentReportId(newsData, snapshot.id);
     const report = reportId ? newsData.reports.find((r) => r.id === reportId) : null;
     linksEl.innerHTML = report
-      ? `出典: <a href="${report.source_url}" target="_blank" rel="noopener">内閣府 防災情報（${formatDateTimeJa(
-          report.datetime
-        )}の報）</a>`
-      : "出典: この時点に対応する報が見つかりません";
+      ? `${I18N.t("sourcePrefix")}<a href="${report.source_url}" target="_blank" rel="noopener">${I18N.t(
+          "sourceNewsLinkTemplate",
+          { date: formatDateTimeLocalized(report.datetime) }
+        )}</a>`
+      : I18N.t("sourcePrefix") + I18N.t("sourceNewsReportNotFound");
     return;
   }
 
+  // snapshot.sources の資料名(s.name)自体は出典資料名なので翻訳しない
   linksEl.innerHTML =
-    "出典: " +
+    I18N.t("sourcePrefix") +
     snapshot.sources
       .map((s) => `<a href="${s.url}" target="_blank" rel="noopener">${s.name}</a>`)
       .join("、");
@@ -1536,8 +1624,8 @@ function renderAll() {
    =========================================================== */
 
 const MAP_MODES = [
-  { key: "metric", label: "数値マップ" },
-  { key: "news", label: "ニュースマップ" },
+  { key: "metric", labelKey: "modeMetric" },
+  { key: "news", labelKey: "modeNews" },
 ];
 
 function buildModeSwitchUI() {
@@ -1550,7 +1638,7 @@ function buildModeSwitchUI() {
     btn.className = "mode-btn";
     btn.dataset.mode = m.key;
     btn.setAttribute("aria-pressed", state.mapMode === m.key ? "true" : "false");
-    btn.textContent = m.label;
+    btn.textContent = I18N.t(m.labelKey);
     btn.addEventListener("click", () => setMapMode(m.key));
     el.appendChild(btn);
   });
@@ -1587,7 +1675,7 @@ function buildMetricSwitchUI() {
     // 要求するため aria-pressed と組み合わせると不整合になる）
     btn.dataset.key = m.key;
     btn.setAttribute("aria-pressed", m.key === state.metric ? "true" : "false");
-    btn.innerHTML = `<span class="dot" style="background:${m.color}"></span>${m.label}`;
+    btn.innerHTML = `<span class="dot" style="background:${m.color}"></span>${metricLabel(m)}`;
     btn.addEventListener("click", () => {
       state.metric = m.key;
       syncMetricButtons();
@@ -1603,12 +1691,71 @@ function syncMetricButtons() {
   });
 }
 
+// event.epicenter（震央地名）は出典資料の記載そのもの（人名・地名の翻訳表を
+// 持たない）なので、市町村名と違って翻訳せずどの言語でも原文のまま表示する
 function buildEventMeta() {
   const ev = data.event;
-  const p = parseJST(ev.origin);
-  document.getElementById("event-meta").textContent =
-    `M${ev.magnitude}・最大震度${ev.max_shindo}・${p.y}年${p.mo}月${p.d}日${pad2(p.h)}:${pad2(p.mi)}発生・` +
-    `${ev.epicenter}（深さ${ev.depth_km}km）`;
+  document.getElementById("event-meta").textContent = I18N.t("eventMetaTemplate", {
+    m: ev.magnitude,
+    shindo: ev.max_shindo,
+    date: I18N.formatEventOrigin(ev.origin),
+    epicenter: ev.epicenter,
+    depth: ev.depth_km,
+  });
+}
+
+/* ===========================================================
+   i18n 統合（DOM側）
+   i18n.js は文字列とフォーマットだけを提供する純ライブラリなので、
+   静的DOMへの適用・言語セレクトの構築・言語切替時の再描画はここで行う
+   =========================================================== */
+
+// index.html 側の data-i18n / data-i18n-aria / data-i18n-title を現在言語で埋める。
+// #detail-content 等は後続の renderAll() が動的内容で上書きするため、
+// 言語切替時は必ず applyI18nAttributes() → renderAll() の順で呼ぶこと
+function applyI18nAttributes() {
+  document.title = I18N.t("appTitle");
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    el.textContent = I18N.t(el.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
+    el.setAttribute("aria-label", I18N.t(el.dataset.i18nAria));
+  });
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+    el.title = I18N.t(el.dataset.i18nTitle);
+  });
+  const ep = document.querySelector(".epicenter-label");
+  if (ep) ep.textContent = I18N.t("epicenterLabel");
+  const play = document.getElementById("btn-play");
+  if (play) play.textContent = I18N.t(state.playTimer ? "tlPause" : "tlPlay");
+}
+
+function buildLangSwitchUI() {
+  const sel = document.getElementById("lang-select");
+  if (!sel) return;
+  sel.innerHTML = "";
+  I18N.LANGS.forEach((l) => {
+    const opt = document.createElement("option");
+    opt.value = l.code;
+    opt.textContent = l.name;
+    sel.appendChild(opt);
+  });
+  sel.value = I18N.getLang();
+  sel.addEventListener("change", () => I18N.setLang(sel.value));
+}
+
+// 言語が変わったら、静的DOM→動的UI部品→全体再描画の順で作り直す。
+// ボタン類は innerHTML から再構築（リスナーも張り直し）で状態は state 側に
+// あるため失われない
+function onLanguageChanged() {
+  const sel = document.getElementById("lang-select");
+  if (sel && sel.value !== I18N.getLang()) sel.value = I18N.getLang();
+  applyI18nAttributes();
+  buildModeSwitchUI();
+  buildMetricSwitchUI();
+  buildNewsFilterChips();
+  buildEventMeta();
+  renderAll();
 }
 
 function wireControls() {
@@ -1732,6 +1879,12 @@ function wireEscapeKey() {
    =========================================================== */
 
 async function boot() {
+  // URL(?lang=)・localStorageから言語を復元。データ到着前でも静的DOMは翻訳できる
+  I18N.init();
+  buildLangSwitchUI();
+  applyI18nAttributes();
+  I18N.onChange(onLanguageChanged);
+
   const [muniRes, timelineRes] = await Promise.all([fetch("data/municipalities.json"), fetch("data/timeline.json")]);
   muniData = await muniRes.json();
   data = await timelineRes.json();
@@ -1758,6 +1911,7 @@ async function boot() {
   buildMetricSwitchUI();
   buildNewsFilterChips();
   wireControls();
+  wireLabelHint();
   initLegendDisclosure();
   initPanelState();
   initMap();

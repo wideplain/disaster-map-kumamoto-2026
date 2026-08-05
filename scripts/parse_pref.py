@@ -327,8 +327,9 @@ def validate(snapshot, present_fields, fname):
 
 def main():
     files = sorted(glob.glob(os.path.join(RAW_DIR, "pref_2026*_*.txt")))
-    if len(files) != 12:
-        print(f"WARNING: expected 12 pref_*.txt files, found {len(files)}", file=sys.stderr)
+    # 報告は日々増えるので固定数チェックはしない。最低限、初期12時点を下回ったら警告する
+    if len(files) < 12:
+        print(f"WARNING: expected at least 12 pref_*.txt files, found {len(files)}", file=sys.stderr)
 
     snapshots = []
     results = []

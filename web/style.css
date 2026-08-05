@@ -132,12 +132,20 @@ button, select, input {
   z-index: 30;
 }
 
+/* 多言語化でタイトルの文字数が言語ごとに大きく変わる（例: ポルトガル語・
+   インドネシア語は日本語より長くなりがち）。以前は flex:none で常に全文
+   表示していたが、それだと狭い画面＋長い訳文の組み合わせでヘッダーが
+   はみ出しうる。event-metaと同様に縮小・省略を許容し、隣の言語切替が
+   常にフル表示されることを優先する */
 .app-header h1 {
-  flex: none; /* タイトルは省略せず常に全文表示。縮むのは event-meta 側 */
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: var(--fs-base);
   margin: 0;
   font-weight: 700;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* flexの子はデフォルトでは中身のnowrapテキストの分だけ広がろうとして
@@ -152,6 +160,59 @@ button, select, input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 言語セレクタは内容が変わらない（言語名の一覧は固定）ので縮めず常に
+   フル表示。地球アイコン＋ネイティブ<select>（キーボード操作・スクリー
+   ンリーダー対応をブラウザ標準に任せられるため） */
+.lang-switch {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lang-icon {
+  font-size: var(--fs-base);
+  line-height: 1;
+}
+
+.lang-select {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: var(--fs-xs);
+  color: var(--ink);
+  max-width: 40vw;
+}
+
+/* 初回訪問時だけ出す1行の非公式サイト注記。localStorageで既読を覚え、
+   以後は表示しない（app.js側で制御） */
+.site-banner {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: #f4f3f0;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  color: var(--ink);
+  text-align: center;
+}
+
+.site-banner[hidden] { display: none; }
+
+.banner-close {
+  flex: none;
+  border: none;
+  background: none;
+  font-size: var(--fs-sm);
+  color: var(--ink-sub);
+  cursor: pointer;
+  padding: 2px 4px;
 }
 
 /* ===== layout ===== */
@@ -286,6 +347,21 @@ button, select, input {
   inset: 0;
 }
 
+/* 地理院タイルの利用規約上、権利表示（MapLibreのattributionコントロール）は
+   常に完全に読める状態でなければならない。#map の内部要素なのでDOM順としては
+   map-wrap内の他のオーバーレイ（凡例・直接ラベル・ニュースマーカー）より
+   先に来てしまい、たまたま同じ画面位置に来たオーバーレイの下に隠れうる。
+   z-indexを他のmap-wrap内オーバーレイより確実に高くして、常に最前面に出す */
+.maplibregl-control-container {
+  z-index: 45;
+}
+
+/* 既定でも読めるサイズだが、コンパクト表示(ⓘ)を展開したときのポップアップが
+   極端に狭い幅で折り返し過ぎないよう最低限のゆとりを持たせる */
+.maplibregl-ctrl-attrib.maplibregl-compact.maplibregl-compact-show {
+  max-width: min(78vw, 420px);
+}
+
 /* ===== mode switch（数値マップ／ニュースマップ） =====
    指標選択とは独立した状態なので見た目もパネル最上部で明確に分ける。
    2択の segmented control。中身はJSが生成する。
@@ -347,11 +423,17 @@ button, select, input {
   line-height: 1.2;
 }
 
+/* 「どの指標がどの色か」が一目でわかるよう、白いリング+濃色の縁取りで
+   ボタンの背景色を問わず色そのものが読み取れるようにする。選択中は
+   さらに一回り拡大し、押すと切り替わる操作対象であることを強調する */
 .metric-btn .dot {
-  width: 9px;
-  height: 9px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   flex: none;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(11, 11, 11, .3);
+  transition: transform .15s ease;
 }
 
 .metric-btn[aria-pressed="true"] {
@@ -359,6 +441,11 @@ button, select, input {
   color: var(--ink);
   font-weight: 700;
   background: #f4f3f0;
+}
+
+.metric-btn[aria-pressed="true"] .dot {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 1px rgba(11, 11, 11, .4), 0 0 0 3px rgba(11, 11, 11, .14);
 }
 
 /* ===== stat header ===== */
@@ -539,10 +626,13 @@ button, select, input {
 }
 
 .news-chip-btn .dot {
-  width: 9px;
-  height: 9px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   flex: none;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(11, 11, 11, .3);
+  transition: transform .15s ease;
 }
 
 .news-chip-btn[aria-pressed="true"] {
@@ -550,6 +640,11 @@ button, select, input {
   color: var(--ink);
   font-weight: 700;
   background: #f4f3f0;
+}
+
+.news-chip-btn[aria-pressed="true"] .dot {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 1px rgba(11, 11, 11, .4), 0 0 0 3px rgba(11, 11, 11, .14);
 }
 
 .news-list {
@@ -720,7 +815,7 @@ button, select, input {
   padding: 4px 12px;
   font-size: var(--fs-xs);
   color: var(--ink-sub);
-  z-index: 5;
+  z-index: 7; /* 市町村の直接ラベル(.map-label, z-index:6)より上に出す */
   backdrop-filter: blur(2px);
 }
 
@@ -796,6 +891,35 @@ button, select, input {
   z-index: 6;
 }
 
+/* 密集でラベルを隠したときのズーム促しピル。凡例(z-index:7)と同層で
+   地図下部中央に置く（凡例=左下、タイムラインバー=地図の外なので干渉しない） */
+.label-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 20px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 6px 12px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(252, 252, 251, .95);
+  color: var(--ink-sub);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  z-index: 7;
+  backdrop-filter: blur(2px);
+}
+
+.label-hint:hover {
+  color: var(--ink);
+}
+
+.label-hint[hidden] { display: none; }
+
 .epicenter-marker {
   display: flex;
   flex-direction: column;
@@ -821,7 +945,7 @@ button, select, input {
 }
 
 /* maplibre popup as tooltip。市町村名の直接ラベル(.map-label, z-index:6)や
-   凡例(.legend, z-index:5)より確実に手前に出す（実機で「バルーンがラベルの
+   凡例(.legend, z-index:7)より確実に手前に出す（実機で「バルーンがラベルの
    下に隠れる」報告があった）。ホバー中はそのmunicipalityの直接ラベル自体を
    一時的に非表示にしてもいる（app.js の showTooltip/hideTooltip）ので、
    通常は重ならないが、隣接する他の市町村のラベルと近接するケースの保険 */
@@ -1210,23 +1334,35 @@ table.data-table {
 
 .info-panel[hidden] { display: none; }
 
-/* 出典は1件ずつブロック化し、長い資料名は折り返さず1行省略にする
-   （URLのような区切りのない長い文字列でも安全に収まるように） */
+/* 出典は「出典: リンク、リンク」を1行のまま流し、はみ出す場合だけ省略する */
 .source-links {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-
-.source-link {
   display: block;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-bottom: 8px;
   font-size: var(--fs-xs);
   color: var(--ink-sub);
+}
+
+.source-links a {
+  display: inline;
+}
+
+/* 「本サイトは非公式」の注記。出典・注記パネルの最上部・出典リンクより前に
+   置き、太字＋枠で他の注記より目立たせる。色は既存パレット（インク/罫線
+   トークン）のみを使い、新しい色相を持ち込まない */
+.info-disclaimer-strong {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .info-disclaimer, .info-credit {
@@ -1336,12 +1472,18 @@ table.data-table {
     transform: translateY(0);
   }
 
+  /* bottom基準（right:10px, bottomはバーのすぐ上）で置いていたところ、地図の
+     権利表示（MapLibreのattributionコントロール、既定でbottom-right）と
+     同じ右下の角を取り合い、チップがattributionの上に重なって完全に隠して
+     しまう不具合があった（利用規約上、常に読めることが必須）。デスクトップ
+     版と同じ「縁の垂直中央」に統一し、右下の角そのものから離す */
   .sheet-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
     position: fixed;
-    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
     z-index: 22;
     min-height: 44px; /* タッチターゲット */
     border: 1px solid var(--line);
@@ -1354,8 +1496,8 @@ table.data-table {
     cursor: pointer;
   }
 
-  #toggle-ranking { bottom: calc(var(--bar-h) + 12px); right: auto; left: 10px; }
-  #toggle-detail { bottom: calc(var(--bar-h) + 12px); }
+  #toggle-ranking { left: 10px; }
+  #toggle-detail { right: 10px; }
 
   .event-meta { display: none; }
 

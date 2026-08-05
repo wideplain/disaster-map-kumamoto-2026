@@ -4,9 +4,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "== 熊本県 災害対策本部会議ページを確認 =="
-curl -sL "https://www.pref.kumamoto.jp/soshiki/222/274487.html" | python3 - <<'EOF'
+# curl | python3 - <<EOF はヒアドキュメントがstdinを奪ってパイプが死ぬので、一時ファイル経由で渡す
+pref_html=$(mktemp)
+trap 'rm -f "$pref_html"' EXIT
+curl -sL "https://www.pref.kumamoto.jp/soshiki/222/274487.html" -o "$pref_html"
+python3 - "$pref_html" <<'EOF'
 import sys, re, html, unicodedata, subprocess, pathlib
-t = sys.stdin.read()
+t = open(sys.argv[1], encoding="utf-8", errors="replace").read()
 for m in re.finditer(r'<a[^>]+href="([^"]*attachment/(\d+)\.pdf)"[^>]*>(.*?)</a>', t, re.S):
     label = unicodedata.normalize('NFKC', html.unescape(re.sub(r'<[^>]+>', '', m.group(3)).strip()))
     if '人的被害等の状況' not in label:
@@ -41,5 +45,6 @@ curl -sL "https://www.bousai.go.jp/updates/r8kumamoto_jishin/index.html" \
 echo "== パースとマージ =="
 python3 scripts/parse_pref.py
 python3 scripts/parse_bousai.py
+python3 scripts/parse_bousai_news.py
 python3 scripts/build_timeline.py
-echo "完了。web/ をデプロイしてください: npx wrangler pages deploy web"
+echo "完了。commit して main に push すると GitHub Pages に自動デプロイされます。"
