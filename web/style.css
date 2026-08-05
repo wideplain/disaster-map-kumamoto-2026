@@ -1,0 +1,1030 @@
+/* ===== design tokens ===== */
+:root {
+  --c-evacuees: #1baf7a;
+  --c-shelters: #008300;
+  --c-deaths: #e34948;
+  --c-injured: #e87ba4;
+  --c-houses: #eb6834;
+  --c-water_outage: #2a78d6;
+  --c-water_stations: #4a3aa7;
+  --c-power_outage: #eda100;
+
+  --ink: #0b0b0b;
+  --ink-sub: #52514e;
+  --ink-thin: #898781;
+  --line: #e1e0d9;
+  --surface: #fcfcfb;
+
+  --up: #c23b34;
+  --down: #1a8f5a;
+  --flat: #52514e;
+
+  /* 実測値はJS(syncBarHeight)がレンダー後に上書きする。この値は
+     JS実行前・フォント読み込み前の暫定値（日付目盛りは廃止済みなので含めない） */
+  --bar-h: 94px;
+  --header-h: 56px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+
+  /* フォントサイズはすべてremベース（ブラウザの文字サイズ設定に追随）。
+     本文・ラベルは13px相当を下限、主要な数値は16px相当を下限にする */
+  --fs-xs: 0.8125rem;  /* 13px: 本文・ラベルの下限 */
+  --fs-sm: 0.875rem;   /* 14px */
+  --fs-base: 0.9375rem;/* 15px */
+  --fs-md: 1rem;       /* 16px: 重要な数値の下限 */
+  --fs-lg: 1.125rem;   /* 18px */
+  --fs-xl: 1.375rem;   /* 22px */
+  --fs-xxl: 1.75rem;   /* 28px */
+}
+
+* { box-sizing: border-box; }
+
+html {
+  /* 明示的に100%とし、ブラウザ/OSの文字サイズ設定をremに反映させる */
+  font-size: 100%;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--fs-xs);
+}
+
+/* フォーカスリングを明示する。マウス操作時(:focus)は出さず、
+   キーボード操作時(:focus-visible)にのみ表示してクリック時の見た目を保つ */
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* 動きに敏感なユーザー向け設定。MapLibre側のtransition/flyToはJSで
+   REDUCED_MOTIONを見て個別に無効化しているので、ここではCSS側の
+   トランジション・アニメーションのみを止める */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  /* 下部固定バー(timeline-bar)の実高さぶんを常に確保し、地図やパネルが
+     その裏に隠れないようにする。border-box なので100vh自体は変わらない */
+  padding-bottom: var(--bar-h);
+}
+
+button, select, input {
+  font-family: inherit;
+}
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* ===== header ===== */
+.app-header {
+  position: relative; /* z-index を効かせるため（通常のフローでは不要だが他の固定要素より確実に手前にする） */
+  flex: none;
+  height: var(--header-h);
+  min-height: var(--header-h);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  z-index: 30;
+}
+
+.app-header h1 {
+  flex: none; /* タイトルは省略せず常に全文表示。縮むのは event-meta 側 */
+  font-size: var(--fs-base);
+  margin: 0;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* flexの子はデフォルトでは中身のnowrapテキストの分だけ広がろうとして
+   親をはみ出す(min-width:autoの罠)。min-width:0を与えて初めて
+   overflow/text-overflowが効くようになる */
+.event-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== layout ===== */
+.app-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 300px 1fr 320px;
+  min-height: 0;
+}
+
+/* デスクトップでの左右パネルの開閉。閉じている間は列幅を0にして地図を
+   広げる（.left-closed/.right-closedはsetPanelOpen()がapp-mainへ付け外しする）。
+   860px以下ではモバイル用のグリッド定義（下のメディアクエリ）が優先される */
+@media (min-width: 861px) {
+  .app-main {
+    transition: grid-template-columns .2s ease;
+  }
+  .app-main.left-closed {
+    grid-template-columns: 0px 1fr 320px;
+  }
+  .app-main.right-closed {
+    grid-template-columns: 300px 1fr 0px;
+  }
+  .app-main.left-closed.right-closed {
+    grid-template-columns: 0px 1fr 0px;
+  }
+  .app-main.left-closed .panel-left,
+  .app-main.right-closed .panel-right {
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+  }
+
+  /* パネルを閉じている間だけ、地図の縁に再度開くための小さなチップを出す。
+     .sheet-toggle自体はモバイル用に定義済みなので、ここでは表示条件と
+     位置だけをデスクトップ向けに上書きする */
+  .sheet-toggle {
+    display: none;
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    z-index: 22;
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 22px;
+    padding: 8px 16px;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+    cursor: pointer;
+  }
+  .app-main.left-closed #toggle-ranking { display: flex; left: 10px; }
+  .app-main.right-closed #toggle-detail { display: flex; right: 10px; }
+}
+
+.panel {
+  overflow-y: auto;
+  min-height: 0;
+  min-width: 0; /* グリッドの子もmin-width:autoにより中身の分だけ広がろうとするため */
+  /* グリッド/フレックスの子として伸びきってしまう環境でも必ず内部スクロールに
+     収まるよう、ビューポート基準で明示的に上限を与える（保険としての指定） */
+  max-height: calc(100vh - var(--header-h) - var(--bar-h));
+  padding: 12px;
+  background: var(--surface);
+}
+
+.panel-left {
+  border-right: 1px solid var(--line);
+}
+
+.panel-right {
+  border-left: 1px solid var(--line);
+}
+
+/* 左右パネル共通の開閉ヘッダー。閉じるボタン(.detail-close使い回し)を常設し、
+   デスクトップでも折りたたみを迷わず見つけられるようにする */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.panel-head-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.map-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+}
+
+/* ===== metric switch ===== */
+.metric-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.metric-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 7px;
+  padding: 6px 12px;
+  min-height: 44px; /* タッチターゲット */
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.2;
+}
+
+.metric-btn .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.metric-btn[aria-pressed="true"] {
+  border-color: var(--ink);
+  color: var(--ink);
+  font-weight: 700;
+  background: #f4f3f0;
+}
+
+/* ===== stat header ===== */
+.stat-block {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: #fff;
+}
+
+.stat-block .label {
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+}
+
+.stat-block .value {
+  font-size: var(--fs-xxl);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.stat-block .value .unit {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--ink-sub);
+  margin-left: 2px;
+}
+
+/* 死者数・負傷者数で、県合計に市町村未確定の人数（関連死調査中・身元不明者等）
+   が含まれる場合の注記。extrasが無い時点ではJS側でdisplay:noneにする */
+.stat-extras-note {
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  line-height: 1.4;
+}
+
+.panel h2 {
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  margin: 14px 0 6px;
+  font-weight: 700;
+}
+
+/* ===== ranking ===== */
+.ranking-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ranking-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  min-height: 44px; /* タッチターゲット */
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  font-size: var(--fs-xs);
+}
+
+.ranking-list li:hover, .ranking-list li:focus-visible {
+  background: #f4f3f0;
+}
+
+.ranking-list li.is-selected {
+  background: #eeece5;
+  font-weight: 700;
+}
+
+.rank-no {
+  width: 18px;
+  color: var(--ink-sub);
+  font-size: var(--fs-xs);
+  flex: none;
+}
+
+.rank-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 熊本県以外の市町村（参考掲載）だとひと目でわかる県名バッジ。
+   ranking/tableの両方で使う */
+.pref-badge {
+  flex: none;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--ink-sub);
+  background: #f0efe9;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+.rank-bar-wrap {
+  width: 46px;
+  height: 6px;
+  background: var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+  flex: none;
+}
+
+.rank-bar {
+  height: 100%;
+  border-radius: 3px;
+}
+
+/* ランキングの値は「重要な数値」として16px以上を確保する */
+.rank-value {
+  width: 72px;
+  text-align: right;
+  flex: none;
+  font-size: var(--fs-md);
+  font-weight: 700;
+}
+
+/* ===== table toggle ===== */
+.table-toggle-btn {
+  margin-top: 14px;
+  width: 100%;
+  min-height: 44px; /* タッチターゲット */
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 7px;
+  padding: 8px;
+  font-size: var(--fs-xs);
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+/* ===== legend =====
+   <details>ベースのアコーディオン。展開してもmax-height+overflow-yで
+   map-wrapの外にはみ出さないようにする（position:absoluteのbottom基準で
+   上方向に伸びるので、はみ出るとすれば地図の上端側） */
+.legend {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  max-width: min(220px, calc(100% - 20px));
+  max-height: min(70vh, calc(100% - 20px));
+  overflow-y: auto;
+  background: rgba(252, 252, 251, .95);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px 12px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  z-index: 5;
+  backdrop-filter: blur(2px);
+}
+
+.legend summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px; /* タッチターゲット */
+  margin: 0 -12px;
+  padding: 0 12px;
+  cursor: pointer;
+  list-style: revert;
+}
+
+.legend[open] summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.legend-body {
+  padding: 8px 0 6px;
+}
+
+#legend-title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.legend-circles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  height: 60px;
+}
+
+.legend-note {
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  max-width: 190px;
+  line-height: 1.4;
+}
+
+.legend-circle-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+.legend-circle {
+  border-radius: 50%;
+  border: 2px solid var(--ink-sub);
+  background: rgba(82, 81, 78, .16);
+}
+
+/* ===== overlay labels / epicenter ===== */
+/* 位置・幅・高さはJS(computeLabelLayout)が衝突回避のうえで毎回px指定するため
+   ここでは transform 等による自動配置は行わない */
+.map-label {
+  position: absolute;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: var(--fs-xs); /* app.js の LABEL_FONT と揃える */
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(252, 252, 251, .9);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+  z-index: 6;
+}
+
+.epicenter-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.epicenter-mark {
+  font-size: var(--fs-xl);
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+}
+
+.epicenter-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(252, 252, 251, .88);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+/* maplibre popup as tooltip */
+.maplibregl-popup-content {
+  font-family: var(--font);
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .18);
+}
+
+.tooltip-name {
+  font-weight: 800;
+  font-size: var(--fs-sm);
+  margin-bottom: 3px;
+}
+
+.tooltip-main {
+  font-size: var(--fs-xs);
+  margin-bottom: 4px;
+}
+
+.tooltip-sub {
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* ===== detail panel ===== */
+.detail-empty {
+  color: var(--ink-sub);
+  font-size: var(--fs-xs);
+  padding: 20px 4px;
+}
+
+/* パネルを閉じるボタンは panel-head 側の常設ボタンに移したため、
+   ここは市町村名(h3)とpref バッジが縦に並ぶだけの単純なブロックでよい */
+.detail-head h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+
+/* 44x44のヒットターゲット。背景・枠を付けて存在がひと目でわかるようにする */
+.detail-close {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 1.125rem;
+  line-height: 1;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.detail-close:hover {
+  background: #f4f3f0;
+  border-color: var(--ink-sub);
+}
+
+.detail-chip {
+  display: inline-block;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 6px;
+  margin-top: 3px;
+}
+
+.detail-metrics {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.detail-metrics li {
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-xs);
+}
+
+.detail-metrics li.is-current {
+  background: #f6f5f1;
+}
+
+.dm-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dm-row .dm-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 一部成分が不明な合算値（負傷者数・住家被害）の注記。dm-value の幅を
+   崩さないよう行の下に別行で出す */
+.dm-note {
+  margin: 2px 0 0 14px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  line-height: 1.4;
+}
+
+.dm-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.dm-label {
+  flex: 1;
+  color: var(--ink-sub);
+}
+
+/* 各指標の現在値。詳細パネルの中で読み取られる中心的な数値なので
+   「重要な数値は16px以上」の対象にする */
+.dm-value {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  min-width: 60px;
+  text-align: right;
+}
+
+.dm-delta {
+  min-width: 62px;
+  text-align: right;
+  font-size: var(--fs-xs);
+}
+
+.dm-delta.up { color: var(--up); }
+.dm-delta.down { color: var(--down); }
+.dm-delta.flat { color: var(--flat); }
+
+.water-note {
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  background: #f4f3f0;
+  border-radius: 7px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.sparkline-wrap {
+  margin-top: 14px;
+}
+
+/* viewBox(260x100)とCSSのaspect-ratioを一致させ、preserveAspectRatioの
+   既定(xMidYMid meet)で歪みなく収まるようにする。狭いパネル・モバイルでも
+   min-heightで潰れないようにする */
+.sparkline-wrap svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2.6 / 1;
+  min-height: 64px;
+  overflow: visible;
+}
+
+.spark-val {
+  margin-top: 4px;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--ink-sub);
+  text-align: right;
+}
+
+/* ===== table overlay ===== */
+.table-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--surface);
+  z-index: 20;
+  overflow: auto;
+  padding: 14px;
+  display: none;
+}
+
+.table-overlay.is-open { display: block; }
+
+.table-overlay-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  padding: 2px 0 8px;
+  z-index: 3;
+}
+
+.table-overlay-head h2 {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--ink);
+}
+
+.back-btn {
+  min-height: 44px; /* タッチターゲット */
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 7px;
+  padding: 6px 14px;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.back-btn:hover {
+  background: #f4f3f0;
+  border-color: var(--ink-sub);
+}
+
+table.data-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--fs-xs);
+}
+
+.data-table caption {
+  text-align: left;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  margin-bottom: 6px;
+}
+
+.data-table th, .data-table td {
+  border: 1px solid var(--line);
+  padding: 6px 9px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.data-table th[scope="row"] {
+  text-align: left;
+  background: #f8f7f4;
+  position: sticky;
+  left: 0;
+}
+
+/* table-overlay-head（戻るボタン）が同じスクロールコンテナ内でtop:0に
+   固定されているため、その実高さぶんだけ下にずらして重ならないようにする */
+.data-table thead th {
+  background: #f4f3f0;
+  position: sticky;
+  top: 54px;
+  text-align: right;
+}
+
+.data-table thead th:first-child {
+  text-align: left;
+  left: 0;
+  z-index: 2;
+}
+
+.data-table tbody tr:nth-child(even) td {
+  background: rgba(0, 0, 0, .015);
+}
+
+.cell-null { color: var(--ink-sub); }
+
+/* ===== bottom timeline bar =====
+   画面下部に固定し、実高さは app.js の syncBarHeight() が
+   --bar-h に反映する（body の padding-bottom / モバイルシートの
+   bottom オフセットはすべてこの1つの変数を参照して整合させる） */
+.timeline-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: var(--bar-h);
+  border-top: 1px solid var(--line);
+  background: rgba(252, 252, 251, .97);
+  backdrop-filter: blur(4px);
+  padding: 8px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 40;
+}
+
+.timeline-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* 「12月31日（水）14:00時点」相当の最長文字列（全角7字+半角9字）でも
+   幅が変わらないよう、実測値ベースのpx下限を確保する。chは半角基準の
+   単位で全角混じりの文字列には小さく出過ぎるため使わない。時点切替の
+   たびにここが伸び縮みすると、隣接する出典・注記ボタンやバー全体の
+   見た目がガチャつくため、常に最長ケース分の幅を確保しておく */
+.current-datetime {
+  flex: none;
+  min-width: 280px;
+  white-space: nowrap;
+  font-size: var(--fs-xl);
+  font-weight: 800;
+}
+
+/* 出典・注記はバーを占有せず、クリックで開くポップオーバーに集約する */
+.info-toggle {
+  flex: none;
+  min-height: 44px; /* タッチターゲット */
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink-sub);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.info-toggle:hover { background: #f4f3f0; }
+
+.info-panel {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 100%;
+  margin-bottom: 8px;
+  max-width: 420px;
+  max-height: min(60vh, calc(100vh - var(--header-h) - 24px));
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, .14);
+}
+
+.info-panel[hidden] { display: none; }
+
+/* 出典は1件ずつブロック化し、長い資料名は折り返さず1行省略にする
+   （URLのような区切りのない長い文字列でも安全に収まるように） */
+.source-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.source-link {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+}
+
+.info-disclaimer, .info-credit {
+  margin: 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  line-height: 1.5;
+}
+
+.info-credit { margin-top: 6px; }
+.info-credit a { color: var(--ink-sub); }
+
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tl-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tl-btn.play {
+  border-radius: 22px;
+  width: 84px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.slider-area {
+  flex: 1;
+  min-width: 0; /* flex:1でもmin-width:autoの罠を避けるため明示 */
+  position: relative;
+}
+
+.slider-area input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--ink);
+  /* トラック全体の縦方向のヒット領域を広げ、指での操作を狙いやすくする */
+  padding: 12px 0;
+  height: 44px;
+  box-sizing: content-box;
+}
+
+.slider-area input[type="range"]::-webkit-slider-thumb {
+  width: 24px;
+  height: 24px;
+}
+
+.slider-area input[type="range"]::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border: none;
+}
+
+/* ===== mobile sheet toggles ===== */
+.sheet-toggle {
+  display: none;
+}
+
+/* ===== responsive ===== */
+@media (max-width: 860px) {
+  .app-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    position: relative;
+  }
+
+  .panel-left, .panel-right {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--bar-h);
+    max-height: 55vh;
+    border: none;
+    border-top: 1px solid var(--line);
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, .12);
+    transform: translateY(105%);
+    transition: transform .25s ease;
+    z-index: 25;
+  }
+
+  .panel-left.is-open, .panel-right.is-open {
+    transform: translateY(0);
+  }
+
+  .sheet-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 10px;
+    z-index: 22;
+    min-height: 44px; /* タッチターゲット */
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 22px;
+    padding: 8px 16px;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+    cursor: pointer;
+  }
+
+  #toggle-ranking { bottom: calc(var(--bar-h) + 12px); right: auto; left: 10px; }
+  #toggle-detail { bottom: calc(var(--bar-h) + 12px); }
+
+  .event-meta { display: none; }
+
+  /* モバイルはフォントを少し落とす分、最長文字列の幅の下限も合わせて縮める */
+  .current-datetime { font-size: var(--fs-lg); min-width: 225px; }
+
+  .info-panel { left: 8px; right: 8px; max-width: none; }
+
+  /* 縦に狭い分、凡例は右下の避難所トグルや左下のランキングトグルと
+     ぶつかるため上部の空きスペース（NavigationControlの反対側）へ */
+  .legend {
+    left: 8px;
+    right: auto;
+    top: 8px;
+    bottom: auto;
+  }
+
+  /* JSでの実測(--bar-h)が反映されるまでの初期値。current-datetimeの
+     折り返しを見込んで少し余裕を持たせる（日付目盛りは廃止済みなので含めない） */
+  :root { --bar-h: 154px; }
+}

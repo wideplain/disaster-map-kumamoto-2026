@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>令和8年熊本地震 被害状況マップ</title>
+<meta name="description" content="令和8年熊本地震の市町村別被害状況を地図と時間スライダーで可視化">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+  integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <h1>令和8年熊本地震 被害状況マップ</h1>
+  <p class="event-meta" id="event-meta">M7.1・最大震度7・2026年7月28日16:27発生</p>
+</header>
+
+<main class="app-main">
+
+  <button id="toggle-ranking" class="sheet-toggle" aria-expanded="false" aria-controls="panel-left">市町村別</button>
+
+  <aside class="panel panel-left" id="panel-left" aria-label="指標選択と市町村別の状況">
+    <div class="panel-head">
+      <span class="panel-head-title">市町村別</span>
+      <button class="detail-close" id="ranking-close" aria-label="このパネルを閉じる">✕</button>
+    </div>
+
+    <div class="metric-switch" id="metric-switch" role="group" aria-label="表示する指標"></div>
+
+    <div class="stat-block">
+      <div class="label" id="stat-label">熊本県 合計</div>
+      <div class="value tabular"><span id="stat-value">-</span><span class="unit" id="stat-unit"></span></div>
+      <div class="stat-extras-note" id="stat-extras-note" style="display:none"></div>
+    </div>
+
+    <h2 id="ranking-heading">市町村別の状況（多い順・10件）</h2>
+    <ol class="ranking-list" id="ranking-list" aria-labelledby="ranking-heading"></ol>
+
+    <button class="table-toggle-btn" id="table-toggle">表で見る（全市町村・全指標）</button>
+  </aside>
+
+  <div class="map-wrap">
+    <div id="map" role="application" aria-label="市町村別被害状況の地図"></div>
+
+    <details class="legend" id="legend">
+      <summary id="legend-summary"><span id="legend-title">円の大きさ</span></summary>
+      <div class="legend-body">
+        <div class="legend-circles" id="legend-circles"></div>
+        <div class="legend-note" id="legend-note"></div>
+      </div>
+    </details>
+
+    <div id="overlay-labels" aria-hidden="true"></div>
+
+    <section class="table-overlay" id="table-overlay" aria-label="全市町村・全指標データテーブル">
+      <div class="table-overlay-head">
+        <button class="back-btn" id="table-close">← 地図に戻る</button>
+        <h2>全市町村・全指標（現在時点）</h2>
+      </div>
+      <div id="table-container"></div>
+    </section>
+  </div>
+
+  <button id="toggle-detail" class="sheet-toggle" aria-expanded="false" aria-controls="panel-right">詳細</button>
+
+  <aside class="panel panel-right" id="panel-right" aria-label="市町村詳細">
+    <div class="panel-head">
+      <span class="panel-head-title">詳細</span>
+      <button class="detail-close" id="detail-panel-close" aria-label="このパネルを閉じる">✕</button>
+    </div>
+    <div id="detail-content" class="detail-empty">地図の円、または左の一覧の市町村をクリックすると詳細が表示されます。</div>
+  </aside>
+
+</main>
+
+<div class="timeline-bar" id="timeline-bar">
+  <div class="timeline-top">
+    <div class="current-datetime tabular" id="current-datetime">-</div>
+    <button class="info-toggle" id="info-toggle" aria-expanded="false" aria-controls="info-panel">出典・注記</button>
+  </div>
+  <div class="timeline-controls">
+    <button class="tl-btn" id="btn-prev" aria-label="前の時点へ" title="前へ（←）">◀</button>
+    <button class="tl-btn play" id="btn-play" aria-label="自動再生" title="自動再生">再生 ▶</button>
+    <button class="tl-btn" id="btn-next" aria-label="次の時点へ" title="次へ（→）">▶</button>
+    <div class="slider-area">
+      <input type="range" id="slider" min="0" max="0" step="1" value="0" aria-label="時点を選択">
+    </div>
+  </div>
+  <div class="info-panel" id="info-panel" hidden>
+    <div class="source-links" id="source-links"></div>
+    <p class="info-disclaimer">数値は各時点の速報値であり、今後の調査により変わる可能性があります。</p>
+    <p class="info-credit">
+      出典: 熊本県 災害対策本部会議資料／内閣府 防災情報 被害状況等報告／
+      <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル（国土地理院）</a>
+    </p>
+  </div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"
+  integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
+<script src="app.js"></script>
+</body>
+</html>
