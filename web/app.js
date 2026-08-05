@@ -76,6 +76,19 @@ function isWaterPeakValid(rec) {
   );
 }
 
+// 熊本県資料がまだその市町村を報告していない期間、内閣府報の現在値で
+// 断水戸数を補完していることがある（water_outage_source フィールド）。
+// 熊本県合計（summary.water_outage）は県資料だけの集計なので、この補完値は
+// 含まれない＝地図の円の合計とズレうる。混同を避けるため出典を明示する
+function isWaterSupplemented(rec) {
+  return !!(rec && rec.water_outage_source);
+}
+
+function waterSourceBadgeHtml(rec) {
+  if (!isWaterSupplemented(rec)) return "";
+  return `<span class="source-badge" title="熊本県資料が未報告のため${rec.water_outage_source}報の値を表示（熊本県合計には含まれない）">${rec.water_outage_source}報による</span>`;
+}
+
 /* ===========================================================
    状態
    =========================================================== */
@@ -83,8 +96,10 @@ function isWaterPeakValid(rec) {
 let map = null;
 let muniData = null;
 let data = null;
+let newsData = null; // 読み込み失敗時もnullのまま許容し、数値マップ側には一切影響させない
 
 const state = {
+  mapMode: "metric", // "metric" | "news" — 指標選択(metric)とは独立した状態
   metric: "evacuees",
   snapshotIndex: 0,
   selected: null,
@@ -92,6 +107,9 @@ const state = {
   globalMaxCache: {},
   top5: [],
   allCircles: [],
+  newsActiveCategories: null, // Set。newsData読み込み後に全カテゴリで初期化
+  newsMarkers: [],
+  hoveredMuni: null, // ホバー中はこの市町村の直接ラベルを一時的に隠す（バルーンとの二重表示回避）
 };
 
 // prefers-reduced-motion: CSSのtransitionはメディアクエリ側で止まるが、
@@ -189,6 +207,94 @@ function hexToRgba(hex, alpha) {
 }
 
 /* ===========================================================
+   ニュースマップモード: データ処理（DOM非依存の純粋関数群）
+
+   数値マップの指標選択とは完全に独立した状態(state.mapMode)で切り替える。
+   data/news.json のスキーマ:
+   { categories:[...], reports:[{id,datetime,source_url}],
+     snapshot_report:{snapshotId->reportId}, events:[{id,category,muni,text,
+     first_seen,last_seen,updated}] }
+   =========================================================== */
+
+// 指標の色パレットを流用し、凡例の色数を増やさない
+const NEWS_CATEGORY_COLORS = {
+  ライフライン: "#2a78d6",
+  交通: "#eb6834",
+  "医療・福祉": "#e87ba4",
+  "生活・行政": "#1baf7a",
+  産業: "#eda100",
+};
+
+function newsCategoryColor(category) {
+  return NEWS_CATEGORY_COLORS[category] || "#52514e";
+}
+
+// 原文PDFの抽出方式によっては和文が「文 字 間 に 半 角 ス ペ ー ス」を
+// 挟んだ状態で入ってくることがある（1文字ごとに半角スペース）。データ自体は
+// 直さず、表示直前だけ「和文文字どうしに挟まれた単独の半角スペース」を
+// 除去する。挟む側が半角英数字（日付の数字など）の場合は本来のスペースと
+// 区別できないため、あえて手を付けずに残す（安全側に倒す）
+const JP_CHAR_CLASS = "[　-ヿ㐀-鿿＀-￯]";
+const JP_SINGLE_SPACE_RE = new RegExp(`(${JP_CHAR_CLASS}) (?=${JP_CHAR_CLASS})`, "gu");
+
+function cleanNewsText(text) {
+  if (typeof text !== "string") return text;
+  return text.replace(JP_SINGLE_SPACE_RE, "$1").trim();
+}
+
+// snapshotのidから対応する報(report)のidを引く。報とスナップショットは
+// 別々の時系列（報のほうが細かい）なので、対応がなければnull
+function currentReportId(news, snapshotId) {
+  return (news && news.snapshot_report && news.snapshot_report[snapshotId]) || null;
+}
+
+// idは "YYYYMMDD-HHMM" 形式で桁数・書式が揃っているため、文字列比較のまま
+// 時系列の前後判定に使える（先頭が年月日、次が時刻で常に同じ桁数）
+function eventsForReport(news, reportId) {
+  if (!news || !reportId) return [];
+  return news.events.filter((e) => e.first_seen <= reportId && reportId <= e.last_seen);
+}
+
+function globalNewsEvents(events) {
+  return events.filter((e) => e.muni === null || e.muni === undefined);
+}
+
+// 同数の場合は categoriesOrder（=news.categories の並び）の先頭側を優先し、
+// 実行のたびに結果が変わらないようにする
+function dominantCategory(events, categoriesOrder) {
+  const counts = {};
+  events.forEach((e) => {
+    counts[e.category] = (counts[e.category] || 0) + 1;
+  });
+  let best = null;
+  let bestCount = 0;
+  (categoriesOrder || []).forEach((cat) => {
+    const c = counts[cat] || 0;
+    if (c > bestCount) {
+      bestCount = c;
+      best = cat;
+    }
+  });
+  return best;
+}
+
+// 地図のマーカーは「市町村ごとに集約」なので、muni付きイベントをグルーピングし、
+// 代表色（件数最多のカテゴリ）と件数を求める
+function aggregateNewsByMuni(events, categoriesOrder) {
+  const byMuni = new Map();
+  events.forEach((e) => {
+    if (e.muni === null || e.muni === undefined) return;
+    if (!byMuni.has(e.muni)) byMuni.set(e.muni, []);
+    byMuni.get(e.muni).push(e);
+  });
+  const result = [];
+  byMuni.forEach((evs, muni) => {
+    result.push({ muni, count: evs.length, events: evs, dominantCategory: dominantCategory(evs, categoriesOrder) });
+  });
+  return result;
+}
+
+/* ===========================================================
    GeoJSON 構築
    =========================================================== */
 
@@ -223,6 +329,27 @@ function buildGeoJSON(snapshot, metric, globalMax) {
 /* ===========================================================
    地図初期化
    =========================================================== */
+
+const NUMERIC_LAYER_IDS = ["circle-fill", "circle-ring", "circle-hit"];
+
+// 数値マップの円レイヤーとニュースマップのマーカー(HTMLオーバーレイ)は
+// 排他表示。円レイヤーはMapLibre側のvisibilityで、ニュースマーカー・上位
+// ラベル・凡例はDOMのdisplayで切り替える（マップロード前に呼ばれても
+// 安全なようレイヤーの有無を確認する）
+function updateLayerVisibilityForMode() {
+  if (map && map.getLayer) {
+    const vis = state.mapMode === "metric" ? "visible" : "none";
+    NUMERIC_LAYER_IDS.forEach((id) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
+    });
+  }
+  const overlayLabelsEl = document.getElementById("overlay-labels");
+  const newsOverlayEl = document.getElementById("news-overlay");
+  if (overlayLabelsEl) overlayLabelsEl.style.display = state.mapMode === "metric" ? "" : "none";
+  if (newsOverlayEl) newsOverlayEl.style.display = state.mapMode === "news" ? "" : "none";
+  const legendEl = document.getElementById("legend");
+  if (legendEl) legendEl.style.display = state.mapMode === "metric" ? "" : "none";
+}
 
 function initMap() {
   map = new maplibregl.Map({
@@ -316,8 +443,12 @@ function onMapLoad() {
     if (e.features && e.features.length) selectMunicipality(e.features[0].properties.name);
   });
 
-  map.on("move", layoutOverlayLabels);
+  map.on("move", () => {
+    if (state.mapMode === "metric") layoutOverlayLabels();
+    else repositionNewsMarkers();
+  });
 
+  updateLayerVisibilityForMode();
   renderAll();
 }
 
@@ -343,15 +474,34 @@ function flyToMuni(name) {
    ツールチップ
    =========================================================== */
 
-const tooltipPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 14 });
+// anchor:"bottom" で固定する（＝ポップオーバーは常にカーソル位置の真上に
+// 出る）。MapLibreの既定は画面端に応じてanchorを動的に選ぶが、それだと
+// 上位5市町村の直接ラベル（同じく動的に位置決めしている）とたまたま同じ側に
+// 決まって重なることがあった。固定+「ホバー中はその市町村の直接ラベルを
+// 消す」(下のstate.hoveredMuni)の2つを合わせて、重なりを構造的に無くす
+const tooltipPopup = new maplibregl.Popup({
+  closeButton: false,
+  closeOnClick: false,
+  anchor: "bottom",
+  offset: 16,
+});
 
 function showTooltip(feature, lngLat) {
   const name = feature.properties.name;
   const rec = currentSnapshot().municipalities[name];
   if (!rec) return;
+
+  // ホバー中の市町村がすでに上位5ラベルとして出ている場合、バルーンと
+  // 二重表示になり重なって見づらいので、ホバー中だけ直接ラベルを引っ込める
+  if (state.hoveredMuni !== name) {
+    state.hoveredMuni = name;
+    if (state.mapMode === "metric") layoutOverlayLabels();
+  }
+
   const metric = getCurrentMetric();
   const others = ["evacuees", "deaths", "water_outage"].filter((k) => k !== metric.key).slice(0, 2);
-  const mainLine = `${metric.label}: <strong>${formatMetricValue(metric, rec)}</strong>`;
+  const sourceBadge = metric.key === "water_outage" ? waterSourceBadgeHtml(rec) : "";
+  const mainLine = `${metric.label}: <strong>${formatMetricValue(metric, rec)}</strong>${sourceBadge}`;
   const subLines = others
     .map((k) => {
       const m = metricByKey(k);
@@ -365,6 +515,10 @@ function showTooltip(feature, lngLat) {
 
 function hideTooltip() {
   tooltipPopup.remove();
+  if (state.hoveredMuni !== null) {
+    state.hoveredMuni = null;
+    if (state.mapMode === "metric") layoutOverlayLabels();
+  }
 }
 
 /* ===========================================================
@@ -386,40 +540,89 @@ const LABEL_PAD_X = 5;
 const LABEL_GAP = 6;
 const LABEL_FONT = '700 13px -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif';
 
-let _measureCtx; // undefined = not yet resolved, null = unavailable (fallback estimate)
+// フォント文字列ごとにcanvasコンテキストをキャッシュする。地図の直接ラベルと
+// 凡例のラベルはフォントサイズ/太さが異なるため、それぞれの実際のレンダリング
+// と一致するフォントで測らないと「測定値だけ小さい」ズレが起きる
+// （実際に凡例のはみ出しの一因になっていた: 13px boldで測って12pxで描画していた）
+const _measureCtxCache = new Map(); // font文字列 -> CanvasRenderingContext2D|null
+
+function getMeasureCtx(font) {
+  if (_measureCtxCache.has(font)) return _measureCtxCache.get(font);
+  let ctx = null;
+  try {
+    const c = document.createElement("canvas");
+    ctx = (c.getContext && c.getContext("2d")) || null;
+    if (ctx) ctx.font = font;
+  } catch (e) {
+    ctx = null;
+  }
+  _measureCtxCache.set(font, ctx);
+  return ctx;
+}
+
+// canvasが無い環境（DOMを持たないNode vm テストハーネス）向けのフォールバック。
+// 13px基準で較正した文字種ごとの概算幅を、要求されたフォントサイズに比例
+// スケールする。実測よりわずかに広めに見積もり、はみ出し・衝突判定を安全側に倒す
+function fallbackTextWidth(text, font) {
+  const m = font.match(/(\d+(?:\.\d+)?)px/);
+  const size = m ? parseFloat(m[1]) : 13;
+  const ratio = size / 13;
+  let w = 0;
+  for (const ch of text) {
+    if (ch === " ") w += 5.3 * ratio;
+    else if (/[　-鿿＀-￯]/.test(ch)) w += 14.2 * ratio; // 全角・漢字・かな
+    else w += 8.9 * ratio; // 半角英数字
+  }
+  return w;
+}
+
+function measureTextWidth(text, font) {
+  const ctx = getMeasureCtx(font);
+  if (ctx) return ctx.measureText(text).width;
+  return fallbackTextWidth(text, font);
+}
 
 // canvas.measureText は「実測」に近い幅が取れるが、DOMを持たないテスト環境
 // (Node vm ハーネス)でも同じ衝突回避ロジックを検証できるよう、canvasが
 // 無ければ文字種ごとの概算幅にフォールバックする。フォールバックは実際の
 // 描画幅よりわずかに広めに見積もり、衝突判定を安全側に倒す。
 function measureLabelWidth(text) {
-  if (_measureCtx === undefined) {
-    try {
-      const c = document.createElement("canvas");
-      _measureCtx = (c.getContext && c.getContext("2d")) || null;
-      if (_measureCtx) _measureCtx.font = LABEL_FONT;
-    } catch (e) {
-      _measureCtx = null;
-    }
-  }
-  if (_measureCtx) return _measureCtx.measureText(text).width;
-
-  let w = 0;
-  for (const ch of text) {
-    if (ch === " ") w += 5.3; // 13px基準（LABEL_FONTと同じサイズ）に再較正
-    else if (/[　-鿿＀-￯]/.test(ch)) w += 14.2; // 全角・漢字・かな
-    else w += 8.9; // 半角英数字
-  }
-  return w;
+  return measureTextWidth(text, LABEL_FONT);
 }
 
 function rectsOverlap(a, b) {
   return a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
 }
 
+// 地図を大きくパン/ズームすると、投影後の座標(px)がマップの可視領域から
+// 大きく（時に数千px）外れることがある。position:absoluteなオーバーレイを
+// そのまま置くと、祖先要素のスクロール可能領域を押し広げてしまい、実機で
+// 「フッターが沈む」「ページ幅ががたつく」（縦横スクロールバーの出現/消滅の
+// 振動）という不具合として報告された。.map-wrap 側の overflow:hidden で
+// 最終的にはクリップされるが、そもそも可視領域外にDOM要素を置かないほうが
+// 安全かつ軽量なので、ここで先に弾く（＝カリング）。marginは可視領域の
+// すぐ外側にある要素まで急に消えないようにするための緩衝
+const OVERLAY_CULL_MARGIN = 60;
+
+function isPointVisible(p, viewport) {
+  if (!viewport) return true; // ビューポート情報が無い呼び出し元（既存テスト等）は従来通り常に表示
+  const margin = viewport.margin != null ? viewport.margin : OVERLAY_CULL_MARGIN;
+  return p.x >= -margin && p.x <= viewport.width + margin && p.y >= -margin && p.y <= viewport.height + margin;
+}
+
+// マップコンテナの現在の表示サイズ（CSSピクセル、map.project()と同じ座標系）。
+// 呼び出しのたびに読む（パネル開閉やリサイズで変わりうるため、キャッシュしない）
+function getMapViewportSize() {
+  if (!map || !map.getContainer) return null;
+  const c = map.getContainer();
+  return { width: c.clientWidth, height: c.clientHeight, margin: OVERLAY_CULL_MARGIN };
+}
+
 // projectFn(lng,lat) -> {x,y} を差し替え可能にしておくことで、
-// ブラウザでは map.project、Nodeテストでは自前のメルカトル投影を使い回せる
-function computeLabelLayout(topItems, allCircles, projectFn) {
+// ブラウザでは map.project、Nodeテストでは自前のメルカトル投影を使い回せる。
+// viewport を渡すと、アンカーが可視領域外に大きく外れたラベルを候補探索
+// なしで即 visible:false にする（カリング。省略時は従来どおり常に候補探索する）
+function computeLabelLayout(topItems, allCircles, projectFn, viewport) {
   const circleBoxes = allCircles.map((c) => {
     const p = projectFn(c.lng, c.lat);
     return { name: c.name, x1: p.x - c.radius, y1: p.y - c.radius, x2: p.x + c.radius, y2: p.y + c.radius };
@@ -430,6 +633,12 @@ function computeLabelLayout(topItems, allCircles, projectFn) {
 
   topItems.forEach((item) => {
     const p = projectFn(item.lng, item.lat);
+
+    if (!isPointVisible(p, viewport)) {
+      results.push({ name: item.name, text: item.text, visible: false });
+      return;
+    }
+
     const w = measureLabelWidth(item.text) + LABEL_PAD_X * 2;
     const h = LABEL_H;
     const gap = item.radius + LABEL_GAP;
@@ -486,7 +695,10 @@ function layoutOverlayLabels() {
     renderLabelDom([]);
     return;
   }
-  const placements = computeLabelLayout(state.top5, state.allCircles, (lng, lat) => map.project([lng, lat]));
+  // ホバー中の市町村はバルーンと二重表示になるので直接ラベルからは除く
+  const items = state.hoveredMuni ? state.top5.filter((t) => t.name !== state.hoveredMuni) : state.top5;
+  const viewport = getMapViewportSize();
+  const placements = computeLabelLayout(items, state.allCircles, (lng, lat) => map.project([lng, lat]), viewport);
   renderLabelDom(placements);
 }
 
@@ -504,6 +716,90 @@ function renderLabelDom(placements) {
     div.textContent = p.text;
     el.appendChild(div);
   });
+}
+
+/* ===========================================================
+   ニュースマップの市町村マーカー（HTMLオーバーレイ、円レイヤーとは排他表示）
+   上位5ラベルと同じくMapLibreのsymbolレイヤーを使わずDOMで描く
+   =========================================================== */
+
+function updateNewsMap(filteredEvents) {
+  if (!newsData) {
+    state.newsMarkers = [];
+    layoutNewsMarkers();
+    return;
+  }
+  const agg = aggregateNewsByMuni(filteredEvents, newsData.categories);
+  state.newsMarkers = agg
+    .map((a) => {
+      const loc = muniData[a.muni];
+      return loc ? { ...a, lng: loc.lng, lat: loc.lat } : null;
+    })
+    .filter(Boolean);
+  layoutNewsMarkers();
+}
+
+// 全マーカーを常にDOMへ入れたうえで表示/非表示だけを毎回切り替える
+// （layoutNewsMarkers/repositionNewsMarkers 共通）。可視領域外は
+// display:noneでレイアウトから完全に外すことで、labelと同じ理由
+// （祖先のスクロール領域を押し広げてscrollbarの出現/消滅を誘発する）を防ぐ。
+// 「集約時に丸ごと除外」ではなくDOMには残す設計にしているのは、パンで
+// 再び画面内に戻ってきたときに（filteredEvents自体は変わっていないので）
+// 再集約なしで復帰できるようにするため
+function applyMarkerVisibility(el) {
+  if (!map) return;
+  const viewport = getMapViewportSize();
+  for (const child of el.children) {
+    const p = map.project([+child.dataset.lng, +child.dataset.lat]);
+    const visible = isPointVisible(p, viewport);
+    child.style.display = visible ? "" : "none";
+    if (visible) {
+      child.style.left = p.x + "px";
+      child.style.top = p.y + "px";
+    }
+  }
+}
+
+function layoutNewsMarkers() {
+  const el = document.getElementById("news-overlay");
+  if (!el) return;
+  el.innerHTML = "";
+  if (!map) return;
+  state.newsMarkers.forEach((m) => {
+    const p = map.project([m.lng, m.lat]);
+    const div = document.createElement("div");
+    div.className = "news-marker";
+    div.style.left = p.x + "px";
+    div.style.top = p.y + "px";
+    div.dataset.lng = m.lng;
+    div.dataset.lat = m.lat;
+    div.tabIndex = 0;
+    div.setAttribute("role", "button");
+    div.setAttribute("aria-label", `${m.muni}: ニュース${m.count}件`);
+    const color = newsCategoryColor(m.dominantCategory);
+    div.innerHTML = `<span class="dot" style="background:${color}"></span>${m.muni}（${m.count}）`;
+    const onActivate = () => {
+      flyToMuni(m.muni);
+      selectMunicipality(m.muni);
+    };
+    div.addEventListener("click", onActivate);
+    div.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onActivate();
+      }
+    });
+    el.appendChild(div);
+  });
+  applyMarkerVisibility(el);
+}
+
+// パン・ズームのたびに呼ぶ（緯度経度→画面座標の再計算+可視判定のみで、集約し直しはしない）
+function repositionNewsMarkers() {
+  if (!map) return;
+  const el = document.getElementById("news-overlay");
+  if (!el) return;
+  applyMarkerVisibility(el);
 }
 
 /* ===========================================================
@@ -560,6 +856,21 @@ function buildExtrasNote(metricKey, extras) {
   return `※うち市町村未確定: ${parts.join("・")}`;
 }
 
+// 断水戸数だけ別枠: 熊本県資料が未報告の市町村を内閣府報の値で地図には
+// 表示しているが、熊本県合計（summary.water_outage）はあくまで県資料だけの
+// 集計なので、その補完値は合計に含まれない。1つでも該当があれば注記する
+function buildWaterSourceNote(snapshot) {
+  const hasSupplemented = Object.values(snapshot.municipalities).some((rec) => isWaterSupplemented(rec));
+  if (!hasSupplemented) return null;
+  return "※未報告の市町村は内閣府報の値で地図に表示（熊本県合計には含まれない）";
+}
+
+function buildStatNote(metric, snapshot) {
+  if (metric.key === "deaths" || metric.key === "injured") return buildExtrasNote(metric.key, snapshot.extras);
+  if (metric.key === "water_outage") return buildWaterSourceNote(snapshot);
+  return null;
+}
+
 function updateStatHeader(snapshot, metric) {
   let total = null;
   const summaryVal = metric.summaryKey && snapshot.summary ? snapshot.summary[metric.summaryKey] : undefined;
@@ -574,7 +885,7 @@ function updateStatHeader(snapshot, metric) {
 
   const noteEl = document.getElementById("stat-extras-note");
   if (noteEl) {
-    const note = buildExtrasNote(metric.key, snapshot.extras);
+    const note = buildStatNote(metric, snapshot);
     noteEl.textContent = note || "";
     noteEl.style.display = note ? "" : "none";
   }
@@ -607,9 +918,10 @@ function updateRanking(snapshot, metric) {
     li.dataset.name = r.name;
     if (state.selected === r.name) li.classList.add("is-selected");
     const barPct = maxV ? (r.value / maxV) * 100 : 0;
+    const waterBadge = metric.key === "water_outage" ? waterSourceBadgeHtml(snapshot.municipalities[r.name]) : "";
     li.innerHTML = `
       <span class="rank-no">${i + 1}</span>
-      <span class="rank-name">${r.name}</span>${prefBadgeHtml(r.name)}
+      <span class="rank-name">${r.name}</span>${prefBadgeHtml(r.name)}${waterBadge}
       <span class="rank-bar-wrap"><span class="rank-bar" style="width:${barPct}%;background:${metric.color}"></span></span>
       <span class="rank-value tabular">${formatNumber(r.value)}</span>`;
     const onActivate = () => {
@@ -634,36 +946,224 @@ function updateRankingSelectionHighlight() {
 }
 
 /* ===========================================================
+   ニュースマップ: 左パネル（カテゴリ絞り込み・一覧）
+   =========================================================== */
+
+// カテゴリ一覧はnewsData読み込み後にしか確定しないため、チップの生成自体は
+// データ到着時に一度だけ行い、以後は aria-pressed の同期だけを毎回行う
+function buildNewsFilterChips() {
+  const el = document.getElementById("news-filter");
+  if (!el || !newsData) return;
+  el.innerHTML = "";
+  newsData.categories.forEach((cat) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "news-chip-btn";
+    btn.dataset.cat = cat;
+    btn.setAttribute("aria-pressed", state.newsActiveCategories.has(cat) ? "true" : "false");
+    btn.innerHTML = `<span class="dot" style="background:${newsCategoryColor(cat)}"></span>${cat}`;
+    btn.addEventListener("click", () => {
+      if (state.newsActiveCategories.has(cat)) state.newsActiveCategories.delete(cat);
+      else state.newsActiveCategories.add(cat);
+      syncNewsFilterChips();
+      renderAll();
+    });
+    el.appendChild(btn);
+  });
+}
+
+function syncNewsFilterChips() {
+  document.querySelectorAll(".news-chip-btn").forEach((b) => {
+    b.setAttribute("aria-pressed", state.newsActiveCategories.has(b.dataset.cat) ? "true" : "false");
+  });
+}
+
+// NEW: この報で初めて登場したイベント／更新: 初出ではないが改訂されているイベント
+// （同時にNEWでもある場合はNEWを優先し、更新バッジは出さない）
+function renderNewsItem(ev, reportId) {
+  const li = document.createElement("li");
+  li.className = "news-item";
+  const isNew = ev.first_seen === reportId;
+  const isUpdated = !isNew && !!ev.updated;
+  if (ev.muni) {
+    li.tabIndex = 0;
+    li.dataset.name = ev.muni;
+  }
+  const muniLabel = ev.muni ? `<span class="news-muni-name">${ev.muni}</span>${prefBadgeHtml(ev.muni)}` : "";
+  const badges =
+    (isNew ? '<span class="news-badge news-badge-new">NEW</span>' : "") +
+    (isUpdated ? '<span class="news-badge news-badge-updated">更新</span>' : "");
+  li.innerHTML = `
+    <div class="news-item-head">
+      ${muniLabel}
+      <span class="news-cat-chip"><span class="dot" style="background:${newsCategoryColor(ev.category)}"></span>${ev.category}</span>
+      ${badges}
+    </div>
+    <div class="news-item-text">${cleanNewsText(ev.text)}</div>`;
+  if (ev.muni) {
+    const onActivate = () => {
+      flyToMuni(ev.muni);
+      selectMunicipality(ev.muni);
+    };
+    li.addEventListener("click", onActivate);
+    li.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onActivate();
+      }
+    });
+  }
+  return li;
+}
+
+// 「県内全域」（市町村に紐づかないイベント）は実データで最大66件/報にのぼり、
+// 一覧の先頭を占領して市町村別の一覧までのスクロールを長くしてしまう。
+// <details>で折りたたみ、件数だけ常に見えるようにする（既定は常に閉じる。
+// 時点を送るたびに件数が変わるので、件数依存で開閉を変えると
+// スクラブ中に開閉状態が不規則に切り替わって煩わしくなるため）
+function buildGlobalNewsGroup(globals, reportId) {
+  const li = document.createElement("li");
+  const details = document.createElement("details");
+  details.className = "news-group";
+  const summary = document.createElement("summary");
+  summary.textContent = `県内全域（${globals.length}件）`;
+  details.appendChild(summary);
+  const innerList = document.createElement("ul");
+  innerList.className = "news-group-list";
+  globals.forEach((e) => innerList.appendChild(renderNewsItem(e, reportId)));
+  details.appendChild(innerList);
+  li.appendChild(details);
+  return li;
+}
+
+function updateNewsPanel(filteredEvents, reportId) {
+  const listEl = document.getElementById("news-list");
+  if (!listEl) return;
+  listEl.innerHTML = "";
+
+  if (!newsData) {
+    listEl.innerHTML = '<li class="news-empty">ニュースデータを読み込めませんでした。</li>';
+    return;
+  }
+  if (!reportId) {
+    listEl.innerHTML = '<li class="news-empty">この時点に対応する報がありません。</li>';
+    return;
+  }
+  if (!filteredEvents.length) {
+    listEl.innerHTML = '<li class="news-empty">この時点・カテゴリに該当するニュースはありません。</li>';
+    return;
+  }
+
+  const globals = globalNewsEvents(filteredEvents);
+  const muniEvents = filteredEvents.filter((e) => e.muni);
+
+  if (globals.length) {
+    listEl.appendChild(buildGlobalNewsGroup(globals, reportId));
+  }
+  if (muniEvents.length) {
+    const label = document.createElement("li");
+    label.className = "news-group-label";
+    label.textContent = "市町村別";
+    listEl.appendChild(label);
+    [...muniEvents]
+      .sort((a, b) => a.muni.localeCompare(b.muni, "ja"))
+      .forEach((e) => listEl.appendChild(renderNewsItem(e, reportId)));
+  }
+}
+
+/* ===========================================================
    凡例
    =========================================================== */
 
+function legendSteps(globalMax) {
+  const raw = [globalMax, globalMax * 0.35, globalMax * 0.1].map(toNiceNumber);
+  return [...new Set(raw.filter((v) => v > 0))].sort((a, b) => b - a).slice(0, 3); // 大→小
+}
+
+// 入れ子同心円（下端揃え）+ 円の上端から右へ伸びるリーダー線 + 値ラベル、の
+// 座標をすべて計算する。DOM/SVG生成から切り離してあるのでテストしやすい。
+// 円は半径最大46px（直径92px）まであるため、固定高さの箱に収めようとすると
+// 崩れる。necessary widthは実際のラベル幅（measureLegendLabelWidthの実測）から
+// 逆算するので、桁数の多い数値でも自動的にコンテナが広がる
+const LEGEND_STROKE_W = 2;
+const LEGEND_LEADER_LEN = 14;
+const LEGEND_LABEL_GAP = 4;
+const LEGEND_PAD = LEGEND_STROKE_W;
+const LEGEND_LABEL_FONT_SIZE = 12;
+// SVGテキストの実際のレンダリング(font-size/weight)と完全に一致させて測る。
+// これがずれると「測定値だけ小さい」まま幅を確保してしまい、右端・上端の
+// はみ出しにつながる（実際に凡例のはみ出しの原因の一つだった）
+const LEGEND_LABEL_FONT = `700 ${LEGEND_LABEL_FONT_SIZE}px -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif`;
+// OS/フォントのメトリクス差（Windows/Mac/Linuxでの実際のグリフ幅の揺れ）を
+// 吸収するための追加バッファ。実測値の上に必ず足す（実測「未満」にはしない）
+const LEGEND_LABEL_SAFETY_W = 4;
+// dominant-baseline="middle" で描くテキストの中心が topY に来るため、
+// 一番大きい円（先頭のitem）は topY がSVGの上端(y=0)ぎりぎりになりやすい。
+// テキストの半分の高さぶんを先頭に確保しておかないと上にはみ出す
+// （全角混じりのCJKフォントは半角欧文よりascent/descentが大きめなので
+// フォントサイズの0.75倍というやや余裕を見た係数で確保する）
+const LEGEND_TOP_PAD = Math.ceil(LEGEND_LABEL_FONT_SIZE * 0.75);
+
+function measureLegendLabelWidth(text) {
+  return measureTextWidth(text, LEGEND_LABEL_FONT);
+}
+
+function computeLegendGeometry(steps, globalMax, metric) {
+  const radii = steps.map((v) => valueToRadius(v, globalMax)); // stepsは大→小なのでradiiも大→小のはず
+  const maxR = radii.length ? Math.max(...radii) : 0;
+  const cx = LEGEND_PAD + maxR;
+  const baselineY = LEGEND_TOP_PAD + LEGEND_PAD + maxR * 2; // 全円が接するy座標（下端揃え）
+
+  const items = steps.map((v, i) => {
+    const r = radii[i];
+    const cy = baselineY - r;
+    const topY = cy - r;
+    const label = `${formatNumber(v)}${metric.unit}`;
+    return { value: v, r, cx, cy, topY, lineEndX: cx + r + LEGEND_LEADER_LEN, label };
+  });
+
+  const maxLabelW = items.length
+    ? Math.max(...items.map((it) => measureLegendLabelWidth(it.label))) + LEGEND_LABEL_SAFETY_W
+    : 0;
+  const width = LEGEND_PAD + maxR * 2 + LEGEND_LEADER_LEN + LEGEND_LABEL_GAP + maxLabelW + LEGEND_PAD;
+  const height = baselineY + LEGEND_PAD;
+
+  return { items, maxR, width: Math.max(width, 1), height: Math.max(height, 1) };
+}
+
+function buildLegendSvg(geometry, metric) {
+  const { items, width, height } = geometry;
+  // 円は指標の色で塗る（凡例が今どの指標のものかひと目でわかるように）。
+  // リーダー線とラベルの文字は常にインク色にする（色つき文字にしない方針のため）
+  const circles = items
+    .map(
+      (it) =>
+        `<circle cx="${it.cx}" cy="${it.cy}" r="${it.r}" fill="${hexToRgba(metric.color, 0.18)}" stroke="${metric.color}" stroke-width="${LEGEND_STROKE_W}"/>` +
+        `<line x1="${it.cx + it.r}" y1="${it.topY}" x2="${it.lineEndX}" y2="${it.topY}" stroke="currentColor" stroke-width="1"/>`
+    )
+    .join("");
+  // font-size/font-weightはLEGEND_LABEL_FONTでの測定と必ず一致させる
+  const labels = items
+    .map(
+      (it) =>
+        `<text class="tabular" x="${it.lineEndX + LEGEND_LABEL_GAP}" y="${it.topY}" dominant-baseline="middle" font-size="${LEGEND_LABEL_FONT_SIZE}" font-weight="700">${it.label}</text>`
+    )
+    .join("");
+  const ariaLabel = `円の大きさの目安: ${items.map((it) => it.label).join("、")}`;
+  return `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="${ariaLabel}">${circles}${labels}</svg>`;
+}
+
 function updateLegend(metric, globalMax) {
   document.getElementById("legend-title").textContent = `円の大きさ（${metric.label}）`;
-  const raw = [globalMax, globalMax * 0.35, globalMax * 0.1].map(toNiceNumber);
-  const steps = [...new Set(raw.filter((v) => v > 0))].sort((a, b) => b - a).slice(0, 3);
+  const steps = legendSteps(globalMax);
 
   const wrap = document.getElementById("legend-circles");
-  wrap.innerHTML = "";
   if (!steps.length) {
+    wrap.innerHTML = "";
     wrap.textContent = "データなし";
   } else {
-    steps.forEach((v) => {
-      const r = valueToRadius(v, globalMax);
-      const item = document.createElement("div");
-      item.className = "legend-circle-item";
-      const circle = document.createElement("div");
-      circle.className = "legend-circle";
-      circle.style.width = r * 2 + "px";
-      circle.style.height = r * 2 + "px";
-      circle.style.borderColor = metric.color;
-      circle.style.background = hexToRgba(metric.color, 0.18);
-      const label = document.createElement("div");
-      label.className = "tabular";
-      label.textContent = formatNumber(v);
-      item.appendChild(circle);
-      item.appendChild(label);
-      wrap.appendChild(item);
-    });
+    const geometry = computeLegendGeometry(steps, globalMax, metric);
+    wrap.innerHTML = buildLegendSvg(geometry, metric);
   }
 
   const noteEl = document.getElementById("legend-note");
@@ -681,12 +1181,41 @@ function selectMunicipality(name) {
   setPanelOpen("right", true);
 }
 
+// ニュースマップでは、一覧・地図側はカテゴリ絞り込みの対象になるが、
+// 詳細パネルは「その市町村の全ニュース（時点内）」を見せる場所なので
+// あえてフィルタを適用しない
+function renderNewsDetail(name) {
+  const contentEl = document.getElementById("detail-content");
+  const loc = muniData[name];
+  contentEl.innerHTML = `<div class="detail-head"><h3>${name}</h3><span class="detail-chip">${
+    loc ? loc.pref : ""
+  }</span></div><ul class="news-list" id="detail-news-list"></ul>`;
+  const listEl = document.getElementById("detail-news-list");
+
+  if (!newsData) {
+    listEl.innerHTML = '<li class="news-empty">ニュースデータを読み込めませんでした。</li>';
+    return;
+  }
+  const reportId = currentReportId(newsData, currentSnapshot().id);
+  const events = eventsForReport(newsData, reportId).filter((e) => e.muni === name);
+  if (!events.length) {
+    listEl.innerHTML = '<li class="news-empty">この時点のニュースはありません。</li>';
+    return;
+  }
+  events.forEach((e) => listEl.appendChild(renderNewsItem(e, reportId)));
+}
+
 function renderDetail() {
   const contentEl = document.getElementById("detail-content");
   const name = state.selected;
   if (!name) {
     contentEl.innerHTML =
       '<div class="detail-empty">地図の円、または左の一覧の市町村をクリックすると詳細が表示されます。</div>';
+    return;
+  }
+
+  if (state.mapMode === "news") {
+    renderNewsDetail(name);
     return;
   }
 
@@ -719,6 +1248,9 @@ function renderDetail() {
     }
     const isCurrent = m.key === state.metric;
     const unknownNote = hasUnknownComponent(m, rec) ? "（ほか不明分あり：一部の内訳が未報告のため既知分のみの合計）" : null;
+    const sourceNote = m.key === "water_outage" && isWaterSupplemented(rec)
+      ? `内閣府報の値で表示（熊本県資料は未報告のため熊本県合計には含まれない）`
+      : null;
     html += `<li class="${isCurrent ? "is-current" : ""}">
       <div class="dm-row">
         <span class="dm-dot" style="background:${m.color}"></span>
@@ -727,6 +1259,7 @@ function renderDetail() {
         ${deltaHtml}
       </div>
       ${unknownNote ? `<div class="dm-note">${unknownNote}</div>` : ""}
+      ${sourceNote ? `<div class="dm-note">${sourceNote}</div>` : ""}
     </li>`;
   });
   html += "</ul>";
@@ -803,7 +1336,7 @@ function renderTable(snapshot) {
   // formatDateTimeJa は末尾に「時点」まで含むため、ここで重ねて付けない
   let html = `<table class="data-table"><caption>${formatDateTimeJa(
     snapshot.datetime
-  )}のデータ。「—」はデータなし（未公表）、「＊」は一部内訳が不明で既知分のみの合計を表す。</caption><thead><tr><th scope="col">市町村</th>`;
+  )}のデータ。「—」はデータなし（未公表）、「＊」は一部内訳が不明で既知分のみの合計、「†」は熊本県資料未報告のため内閣府報の値で補完を表す。</caption><thead><tr><th scope="col">市町村</th>`;
   METRICS.forEach((m) => {
     html += `<th scope="col">${m.label}<br>(${m.unit})</th>`;
   });
@@ -816,8 +1349,9 @@ function renderTable(snapshot) {
       if (typeof val !== "number") {
         html += '<td class="cell-null tabular">—</td>';
       } else {
-        const mark = rec && hasUnknownComponent(m, rec) ? "＊" : "";
-        html += `<td class="tabular">${formatNumber(val)}${mark}</td>`;
+        const unknownMark = rec && hasUnknownComponent(m, rec) ? "＊" : "";
+        const sourceMark = m.key === "water_outage" && isWaterSupplemented(rec) ? "†" : "";
+        html += `<td class="tabular">${formatNumber(val)}${unknownMark}${sourceMark}</td>`;
       }
     });
     html += "</tr>";
@@ -919,29 +1453,42 @@ function initPanelState() {
 
 function updateHeaderDateTime(snapshot) {
   document.getElementById("current-datetime").textContent = formatDateTimeJa(snapshot.datetime);
-  document.getElementById("source-links").innerHTML =
+  const linksEl = document.getElementById("source-links");
+
+  // ニュースマップ中は、その時点に対応する内閣府報へのリンクを出典として明示する
+  // （数値マップ側の出典表示には一切手を入れない）
+  if (state.mapMode === "news") {
+    if (!newsData) {
+      linksEl.innerHTML = "出典: ニュースデータを読み込めませんでした";
+      return;
+    }
+    const reportId = currentReportId(newsData, snapshot.id);
+    const report = reportId ? newsData.reports.find((r) => r.id === reportId) : null;
+    linksEl.innerHTML = report
+      ? `出典: <a href="${report.source_url}" target="_blank" rel="noopener">内閣府 防災情報（${formatDateTimeJa(
+          report.datetime
+        )}の報）</a>`
+      : "出典: この時点に対応する報が見つかりません";
+    return;
+  }
+
+  linksEl.innerHTML =
     "出典: " +
     snapshot.sources
       .map((s) => `<a href="${s.url}" target="_blank" rel="noopener">${s.name}</a>`)
       .join("、");
 }
 
-// 下部固定バーの実高さを body の padding-bottom / モバイルシートの
-// bottom オフセットへ反映する。出典リンクの文言は時点ごとに長さが変わり
-// 折り返し行数（＝バーの高さ）も変わるため、スナップショット切替のたびに
-// 測り直さないと固定バーと地図・パネルが重なったり隙間が空いたりする
-function syncBarHeight() {
-  const bar = document.getElementById("timeline-bar");
-  if (!bar) return;
-  const h = bar.offsetHeight;
-  if (h > 0) document.documentElement.style.setProperty("--bar-h", h + "px");
-}
+// 下部固定バーの高さは style.css の --bar-h（固定値）だけで決まる。
+// かつてはここで実行時にバーの高さを実測し、その値でCSS変数を書き換える
+// 仕組みがあったが、実機で「地図の操作や時点切替のたびにバーが大きくうねる」
+// 不具合の原因になっていたため撤去した。JSは--bar-hを一切読み書きしない。
+// 高さを一定に保つ責務はCSS側（.timeline-bar の height固定+overflow:hidden、
+// 内部の各行の flex-wrap:nowrap+ellipsis）に完全に移した。
 
-function renderAll() {
-  const snapshot = currentSnapshot();
+// 数値マップの描画本体。旧 renderAll() の中身そのままで、挙動は変えていない
+function renderMetricMode(snapshot) {
   const metric = getCurrentMetric();
-
-  updateHeaderDateTime(snapshot);
 
   const globalMax = getGlobalMax(metric.key);
   const fc = buildGeoJSON(snapshot, metric, globalMax);
@@ -954,14 +1501,80 @@ function renderAll() {
   updateTop5(fc.features, metric);
   if (state.selected) renderDetail();
   if (document.getElementById("table-overlay").classList.contains("is-open")) renderTable(snapshot);
+}
+
+function renderNewsMode(snapshot) {
+  const reportId = newsData ? currentReportId(newsData, snapshot.id) : null;
+  const events = eventsForReport(newsData, reportId);
+  const filtered = state.newsActiveCategories
+    ? events.filter((e) => state.newsActiveCategories.has(e.category))
+    : events;
+
+  updateNewsMap(filtered);
+  updateNewsPanel(filtered, reportId);
+  if (state.selected) renderDetail();
+}
+
+function renderAll() {
+  const snapshot = currentSnapshot();
+  updateHeaderDateTime(snapshot);
+
+  if (state.mapMode === "metric") renderMetricMode(snapshot);
+  else renderNewsMode(snapshot);
 
   document.getElementById("slider").value = state.snapshotIndex;
-  syncBarHeight();
 }
 
 /* ===========================================================
    UI組み立て・イベント配線
    =========================================================== */
+
+/* ===========================================================
+   モード切替（数値マップ／ニュースマップ）
+   指標選択(state.metric)とは独立した状態。既存の数値マップの関数・状態には
+   一切手を入れず、パネルの表示切替とレイヤーのvisibilityだけで両立させる
+   =========================================================== */
+
+const MAP_MODES = [
+  { key: "metric", label: "数値マップ" },
+  { key: "news", label: "ニュースマップ" },
+];
+
+function buildModeSwitchUI() {
+  const el = document.getElementById("mode-switch");
+  if (!el) return;
+  el.innerHTML = "";
+  MAP_MODES.forEach((m) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "mode-btn";
+    btn.dataset.mode = m.key;
+    btn.setAttribute("aria-pressed", state.mapMode === m.key ? "true" : "false");
+    btn.textContent = m.label;
+    btn.addEventListener("click", () => setMapMode(m.key));
+    el.appendChild(btn);
+  });
+}
+
+function syncModeButtons() {
+  document.querySelectorAll(".mode-btn").forEach((b) => {
+    b.setAttribute("aria-pressed", b.dataset.mode === state.mapMode ? "true" : "false");
+  });
+}
+
+function setMapMode(mode) {
+  if (state.mapMode === mode) return;
+  state.mapMode = mode;
+  syncModeButtons();
+
+  const metricContentEl = document.getElementById("panel-metric-content");
+  const newsContentEl = document.getElementById("panel-news-content");
+  if (metricContentEl) metricContentEl.hidden = mode !== "metric";
+  if (newsContentEl) newsContentEl.hidden = mode !== "news";
+
+  updateLayerVisibilityForMode();
+  renderAll();
+}
 
 function buildMetricSwitchUI() {
   const el = document.getElementById("metric-switch");
@@ -1048,10 +1661,6 @@ function wireControls() {
     setPanelOpen("right", false);
   });
 
-  // 幅が変わるとモバイル/デスクトップでフォントサイズや折り返しが変わり
-  // 固定バーの高さも変わるため、都度 --bar-h を測り直す
-  window.addEventListener("resize", syncBarHeight);
-
   wireInfoPanel();
   wireEscapeKey();
 }
@@ -1127,6 +1736,16 @@ async function boot() {
   muniData = await muniRes.json();
   data = await timelineRes.json();
 
+  // ニュースマップ用データは失敗しても数値マップ側を一切壊さないよう、
+  // 個別にtry/catchする（未生成・404でも起動は続行する）
+  try {
+    const newsRes = await fetch("data/news.json");
+    if (newsRes.ok) newsData = await newsRes.json();
+  } catch (e) {
+    newsData = null;
+  }
+  if (newsData) state.newsActiveCategories = new Set(newsData.categories);
+
   // 直近時点を初期表示にし、そこから過去へ遡れるようにする
   state.snapshotIndex = data.snapshots.length - 1;
 
@@ -1135,9 +1754,10 @@ async function boot() {
   sliderEl.value = String(state.snapshotIndex);
 
   buildEventMeta();
+  buildModeSwitchUI();
   buildMetricSwitchUI();
+  buildNewsFilterChips();
   wireControls();
-  syncBarHeight();
   initLegendDisclosure();
   initPanelState();
   initMap();

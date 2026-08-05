@@ -4,7 +4,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>令和8年熊本地震 被害状況マップ</title>
-<meta name="description" content="令和8年熊本地震の市町村別被害状況を地図と時間スライダーで可視化">
+<meta name="description" content="令和8年熊本地震（2026年7月28日発生）の市町村別被害状況と関連ニュースを、地理院地図上に時間スライダー付きで可視化。避難者数・住家被害・断水などの推移を掲載。">
+<link rel="canonical" href="https://wideplain.github.io/disaster-map-kumamoto-2026/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="令和8年熊本地震 被害状況マップ">
+<meta property="og:title" content="令和8年熊本地震 被害状況マップ">
+<meta property="og:description" content="市町村別の被害状況と関連ニュースを時系列で可視化。避難者数・住家被害・断水などの推移を掲載。">
+<meta property="og:url" content="https://wideplain.github.io/disaster-map-kumamoto-2026/">
+<meta property="og:image" content="https://wideplain.github.io/disaster-map-kumamoto-2026/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#fcfcfb">
+<meta name="google-site-verification" content="R22qrLWXLy4Lhi4z2pKprLbunVgeNV23kFum8es5Hyc" />
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-TCSJHDE22Z"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-TCSJHDE22Z');
+</script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
   integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous">
 <link rel="stylesheet" href="style.css">
@@ -18,26 +42,39 @@
 
 <main class="app-main">
 
-  <button id="toggle-ranking" class="sheet-toggle" aria-expanded="false" aria-controls="panel-left">市町村別</button>
+  <button id="toggle-ranking" class="sheet-toggle" aria-expanded="false" aria-controls="panel-left">指標・市町村別</button>
 
   <aside class="panel panel-left" id="panel-left" aria-label="指標選択と市町村別の状況">
     <div class="panel-head">
-      <span class="panel-head-title">市町村別</span>
+      <span class="panel-head-title">指標・市町村別</span>
       <button class="detail-close" id="ranking-close" aria-label="このパネルを閉じる">✕</button>
     </div>
 
-    <div class="metric-switch" id="metric-switch" role="group" aria-label="表示する指標"></div>
+    <div class="mode-switch" id="mode-switch" role="group" aria-label="地図の表示モード"></div>
 
-    <div class="stat-block">
-      <div class="label" id="stat-label">熊本県 合計</div>
-      <div class="value tabular"><span id="stat-value">-</span><span class="unit" id="stat-unit"></span></div>
-      <div class="stat-extras-note" id="stat-extras-note" style="display:none"></div>
+    <div id="panel-metric-content" class="panel-scroll">
+      <h2 class="panel-subhead">表示する指標</h2>
+      <div class="metric-switch" id="metric-switch" role="group" aria-label="表示する指標"></div>
+
+      <div class="stat-block">
+        <div class="label" id="stat-label">熊本県 合計</div>
+        <div class="value tabular"><span id="stat-value">-</span><span class="unit" id="stat-unit"></span></div>
+        <div class="stat-extras-note" id="stat-extras-note" style="display:none"></div>
+      </div>
+
+      <h2 id="ranking-heading">市町村別の状況（多い順・10件）</h2>
+      <ol class="ranking-list" id="ranking-list" aria-labelledby="ranking-heading"></ol>
+
+      <button class="table-toggle-btn" id="table-toggle">表で見る（全市町村・全指標）</button>
     </div>
 
-    <h2 id="ranking-heading">市町村別の状況（多い順・10件）</h2>
-    <ol class="ranking-list" id="ranking-list" aria-labelledby="ranking-heading"></ol>
+    <div id="panel-news-content" class="panel-scroll" hidden>
+      <h2 class="panel-subhead">カテゴリで絞り込み</h2>
+      <div class="news-filter" id="news-filter" role="group" aria-label="ニュースのカテゴリ絞り込み"></div>
 
-    <button class="table-toggle-btn" id="table-toggle">表で見る（全市町村・全指標）</button>
+      <h2 id="news-heading">ニュース一覧</h2>
+      <ol class="news-list" id="news-list" aria-labelledby="news-heading"></ol>
+    </div>
   </aside>
 
   <div class="map-wrap">
@@ -52,6 +89,7 @@
     </details>
 
     <div id="overlay-labels" aria-hidden="true"></div>
+    <div id="news-overlay" aria-hidden="true"></div>
 
     <section class="table-overlay" id="table-overlay" aria-label="全市町村・全指標データテーブル">
       <div class="table-overlay-head">
@@ -69,7 +107,7 @@
       <span class="panel-head-title">詳細</span>
       <button class="detail-close" id="detail-panel-close" aria-label="このパネルを閉じる">✕</button>
     </div>
-    <div id="detail-content" class="detail-empty">地図の円、または左の一覧の市町村をクリックすると詳細が表示されます。</div>
+    <div id="detail-content" class="detail-empty panel-scroll">地図の円、または左の一覧の市町村をクリックすると詳細が表示されます。</div>
   </aside>
 
 </main>
@@ -87,14 +125,24 @@
       <input type="range" id="slider" min="0" max="0" step="1" value="0" aria-label="時点を選択">
     </div>
   </div>
-  <div class="info-panel" id="info-panel" hidden>
-    <div class="source-links" id="source-links"></div>
-    <p class="info-disclaimer">数値は各時点の速報値であり、今後の調査により変わる可能性があります。</p>
-    <p class="info-credit">
-      出典: 熊本県 災害対策本部会議資料／内閣府 防災情報 被害状況等報告／
-      <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル（国土地理院）</a>
-    </p>
-  </div>
+</div>
+
+<!-- .timeline-bar は高さ固定+overflow:hiddenでクリップするため、その裏に
+     隠れてはいけないポップオーバーはバーの外（兄弟要素）に置く -->
+<div class="info-panel" id="info-panel" hidden>
+  <div class="source-links" id="source-links"></div>
+  <p class="info-disclaimer">数値は各時点の速報値であり、今後の調査により変わる可能性があります。</p>
+  <p class="info-credit">
+    出典: 熊本県 災害対策本部会議資料／内閣府 防災情報 被害状況等報告／
+    <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル（国土地理院）</a>
+  </p>
+  <p class="info-credit">
+    本サイトはオープンソースです:
+    <a href="https://github.com/wideplain/disaster-map-kumamoto-2026" target="_blank" rel="noopener">GitHub（wideplain/disaster-map-kumamoto-2026）</a>
+  </p>
+  <p class="info-credit">
+    本サイトは利用状況の把握のため Google アナリティクスを使用しています。
+  </p>
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"

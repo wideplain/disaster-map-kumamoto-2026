@@ -19,9 +19,20 @@
   --down: #1a8f5a;
   --flat: #52514e;
 
-  /* 実測値はJS(syncBarHeight)がレンダー後に上書きする。この値は
-     JS実行前・フォント読み込み前の暫定値（日付目盛りは廃止済みなので含めない） */
-  --bar-h: 94px;
+  /* .timeline-bar の固定高さ。JSは一切書き込まない（実測してこの変数を
+     更新する仕組みは、実機で「バーが大きくうねる」不具合の原因になったため
+     完全に撤去した）。内訳は .timeline-bar 内の2行がどちらも常に1行で
+     収まる設計になっている前提の計算値:
+       padding-top 8 + row1(.timeline-top) 44
+       + gap 6 + row2(.timeline-controls) 68
+       + padding-bottom 8 + border-top 1 = 135px
+     （row1の44pxは.info-toggleのmin-height、row2の68pxは
+     .slider-area input[type=range]のheight:44px+padding:12px*2、
+     どちらも内容依存ではなくCSSの固定値なので変動しない）。
+     ブラウザ間のフォントメトリクス差を吸収する安全マージンを乗せて140pxとする。
+     デスクトップ・モバイルで内容の行数は変わらない（.timeline-topは
+     flex-wrap:nowrapで折り返さない）ため、ブレークポイント別の値は持たない */
+  --bar-h: 140px;
   --header-h: 56px;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
 
@@ -38,9 +49,19 @@
 
 * { box-sizing: border-box; }
 
+/* html は明示的に overflow:hidden にする。body だけを overflow:hidden にしても
+   （html側が既定のvisibleのままだと）ページ全体の縦スクロールを止めきれない
+   ケースがあり、地図パン中に画面外へ出たオーバーレイ要素がscrollbarの
+   出現/消滅を誘発 → ページ幅が変わる → 折り返し/地図リサイズが起きる →
+   はみ出しが直る → scrollbar消滅 → 幅が戻る……という振動（フッターの
+   「うねうね」やページ幅のがたつき）の実機報告につながっていた。
+   scrollbar-gutter は将来的にスクロールバーが出る場面が生じても幅を
+   固定しておくための保険（overflow:hiddenと両方効かせて二重に防ぐ） */
 html {
   /* 明示的に100%とし、ブラウザ/OSの文字サイズ設定をremに反映させる */
   font-size: 100%;
+  overflow: hidden;
+  scrollbar-gutter: stable;
 }
 
 html, body {
@@ -75,9 +96,18 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  /* dvh対応ブラウザでは100dvhが上書きする（未対応ブラウザは無効な値として
+     無視し100vhのまま）。モバイルはアドレスバーの出入りで100vhの基準となる
+     実ビューポート高さ自体が伸縮するため、100vhのままだとbodyの高さが
+     そのたびに変わり、下部固定バーが跳ねる／隠れる原因になっていた。
+     dvh（動的ビューポート高さ）はアドレスバーの状態を織り込んだ値なので
+     JS側で計測し直さなくてもこの伸縮を吸収できる */
+  height: 100dvh;
   overflow: hidden;
-  /* 下部固定バー(timeline-bar)の実高さぶんを常に確保し、地図やパネルが
-     その裏に隠れないようにする。border-box なので100vh自体は変わらない */
+  /* 下部固定バー(timeline-bar)の高さぶんを常に確保し、地図やパネルがその裏に
+     隠れないようにする。--bar-h はCSSで決め打ちの定数（JSは一切書き込まない。
+     詳細は .timeline-bar 側のコメント参照）なので、この値自体が実行中に
+     変わることはない */
   padding-bottom: var(--bar-h);
 }
 
@@ -180,13 +210,22 @@ button, select, input {
   .app-main.right-closed #toggle-detail { display: flex; right: 10px; }
 }
 
+/* パネル自体は高さを固定し（グリッド行いっぱいに広げる）、スクロールは
+   させない。閉じるボタンの行(.panel-head)やモード切替(.mode-switch)は
+   常に見えたまま、下の .panel-scroll だけが伸び縮み・スクロールする。
+   以前は .panel 自体が overflow-y:auto だったため、ヘッダーごとスクロール
+   で流れて見失われたり、環境によってはパネルそのものが際限なく下に
+   伸びてしまう不具合があった */
 .panel {
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   min-height: 0;
   min-width: 0; /* グリッドの子もmin-width:autoにより中身の分だけ広がろうとするため */
-  /* グリッド/フレックスの子として伸びきってしまう環境でも必ず内部スクロールに
-     収まるよう、ビューポート基準で明示的に上限を与える（保険としての指定） */
+  /* グリッド/フレックスの子として伸びきってしまう環境でも必ず高さの上限を
+     持つよう、ビューポート基準でも明示しておく（保険としての指定） */
   max-height: calc(100vh - var(--header-h) - var(--bar-h));
+  overflow: hidden; /* パネル自体はここで打ち止め。中身は.panel-scrollが担当 */
   padding: 12px;
   background: var(--surface);
 }
@@ -200,13 +239,26 @@ button, select, input {
 }
 
 /* 左右パネル共通の開閉ヘッダー。閉じるボタン(.detail-close使い回し)を常設し、
-   デスクトップでも折りたたみを迷わず見つけられるようにする */
+   デスクトップでも折りたたみを迷わず見つけられるようにする。
+   flex:none でスクロール領域が縮んでもこの行だけは縮まない＝常に見える */
 .panel-head {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
   margin-bottom: 10px;
+}
+
+/* パネル本体のスクロール領域。ランキング/ニュース一覧(#panel-metric-content,
+   #panel-news-content)と市町村詳細(#detail-content)のいずれもこのクラスを
+   持たせ、パネル内でコンテンツが多いときはここだけがスクロールする */
+.panel-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden; /* パネル内は横スクロールを想定していないので、はみ出しは常に隠す */
+  overflow-wrap: anywhere; /* 長い市町村名・数値・バッジ等が横に突き抜けないための保険 */
 }
 
 .panel-head-title {
@@ -215,14 +267,61 @@ button, select, input {
   color: var(--ink);
 }
 
+/* overflow:hidden で地図ビューポートの外側をクリップする。上位ラベル・
+   ニュースマーカーはHTMLオーバーレイ(position:absolute)で描いており、
+   地図を大きくパンすると投影先の座標が map-wrap の外（時に数千px）へ
+   出ることがある。クリップしないと、その座標が祖先のスクロール可能領域を
+   押し広げ、ページに縦スクロールバーが出たり消えたりする振動の原因になる
+   （実機で「フッターが沈む」「ページ幅ががたつく」として報告された不具合）。
+   JS側でも画面外アンカーはカリングして描画自体をスキップする
+   （computeLabelLayout/repositionNewsMarkers）が、こちらは最終防衛線 */
 .map-wrap {
   position: relative;
   min-width: 0;
+  overflow: hidden;
 }
 
 #map {
   position: absolute;
   inset: 0;
+}
+
+/* ===== mode switch（数値マップ／ニュースマップ） =====
+   指標選択とは独立した状態なので見た目もパネル最上部で明確に分ける。
+   2択の segmented control。中身はJSが生成する。
+   flex:none で .panel-head と同様に常に見えたままにする（スクロールで隠れない） */
+.mode-switch {
+  flex: none;
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.mode-btn {
+  flex: 1;
+  border: none;
+  background: #fff;
+  padding: 8px 6px;
+  min-height: 44px; /* タッチターゲット */
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink-sub);
+  cursor: pointer;
+}
+
+.mode-btn + .mode-btn {
+  border-left: 1px solid var(--line);
+}
+
+.mode-btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.panel-subhead {
+  margin: 4px 0 6px !important;
 }
 
 /* ===== metric switch ===== */
@@ -361,6 +460,21 @@ button, select, input {
   white-space: nowrap;
 }
 
+/* 断水戸数のうち、熊本県資料未報告で内閣府報の値に差し替えている市町村の
+   出典バッジ。pref-badgeと紛れないよう破線にして「補足情報」と分かるようにする */
+.source-badge {
+  flex: none;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--ink-sub);
+  background: none;
+  border: 1px dashed var(--ink-thin);
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+  cursor: help;
+}
+
 .rank-bar-wrap {
   width: 46px;
   height: 6px;
@@ -397,6 +511,196 @@ button, select, input {
   color: var(--ink);
   cursor: pointer;
   font-weight: 700;
+}
+
+/* ===== ニュースマップモード =====
+   カテゴリ色は既存の指標パレットを流用（凡例の色数を増やさないため）。
+   テキストは常にインク色にし、色は丸チップ/枠線だけに使う方針は
+   数値マップ側と統一する */
+.news-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.news-chip-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  min-height: 36px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.news-chip-btn .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.news-chip-btn[aria-pressed="true"] {
+  border-color: var(--ink);
+  color: var(--ink);
+  font-weight: 700;
+  background: #f4f3f0;
+}
+
+.news-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.news-group-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink-sub);
+  margin: 12px 0 4px;
+}
+
+/* 「県内全域」の折りたたみグループ。件数が多い報でも市町村別の一覧まで
+   スクロールしなくて済むよう既定で閉じる（summaryに件数を出す） */
+.news-group {
+  margin: 12px 0 4px;
+}
+
+.news-group summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink-sub);
+  padding: 4px 2px;
+}
+
+.news-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.news-group summary::before {
+  content: "▶";
+  display: inline-block;
+  margin-right: 5px;
+  font-size: 9px;
+  color: var(--ink-thin);
+}
+
+.news-group[open] summary::before {
+  content: "▼";
+}
+
+.news-group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.news-item {
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.news-item:hover, .news-item:focus-visible {
+  background: #f4f3f0;
+}
+
+.news-item-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.news-muni-name {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* カテゴリチップ。丸ドット+ラベルのみ色を使い、本文テキストは常にインク色 */
+.news-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+.news-cat-chip .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.news-badge {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+.news-badge-new {
+  color: var(--up);
+  border: 1px solid var(--up);
+}
+
+.news-badge-updated {
+  color: var(--ink-sub);
+  border: 1px solid var(--ink-sub);
+}
+
+.news-item-text {
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.news-empty {
+  color: var(--ink-sub);
+  font-size: var(--fs-xs);
+  padding: 12px 4px;
+}
+
+/* 地図上のニュースマーカー（市町村ごとに集約したイベント件数）。
+   MapLibreのcircleレイヤーではなくHTMLオーバーレイで描き、上位5ラベルと
+   同じ理由（システムフォント統一・グリフ配信への非依存）に合わせる */
+.news-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff;
+  border: 2px solid var(--ink-sub);
+  border-radius: 999px;
+  padding: 3px 8px 3px 6px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
+  white-space: nowrap;
+}
+
+.news-marker .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
 }
 
 /* ===== legend =====
@@ -448,12 +752,19 @@ button, select, input {
   color: var(--ink);
 }
 
+/* 入れ子同心円（下端揃え）+ リーダー線 + 値ラベルのSVGを描く。
+   サイズはJS(computeLegendGeometry)が最大円の直径とラベル幅から算出して
+   svgのwidth/height/viewBoxに直接反映するため、ここでは固定の高さを
+   持たせない（旧実装はheight:60px固定で最大円92pxが収まらず崩れていた） */
 .legend-circles {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 10px;
-  height: 60px;
+  display: block;
+  color: var(--ink-sub);
+}
+
+.legend-circles svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
 .legend-note {
@@ -462,20 +773,6 @@ button, select, input {
   color: var(--ink-sub);
   max-width: 190px;
   line-height: 1.4;
-}
-
-.legend-circle-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 3px;
-}
-
-.legend-circle {
-  border-radius: 50%;
-  border: 2px solid var(--ink-sub);
-  background: rgba(82, 81, 78, .16);
 }
 
 /* ===== overlay labels / epicenter ===== */
@@ -523,7 +820,15 @@ button, select, input {
   border-radius: 3px;
 }
 
-/* maplibre popup as tooltip */
+/* maplibre popup as tooltip。市町村名の直接ラベル(.map-label, z-index:6)や
+   凡例(.legend, z-index:5)より確実に手前に出す（実機で「バルーンがラベルの
+   下に隠れる」報告があった）。ホバー中はそのmunicipalityの直接ラベル自体を
+   一時的に非表示にしてもいる（app.js の showTooltip/hideTooltip）ので、
+   通常は重ならないが、隣接する他の市町村のラベルと近接するケースの保険 */
+.maplibregl-popup {
+  z-index: 10;
+}
+
 .maplibregl-popup-content {
   font-family: var(--font);
   padding: 8px 10px;
@@ -748,9 +1053,18 @@ button, select, input {
   border-color: var(--ink-sub);
 }
 
+/* table-layout:fixed にし、列幅を最初の行(thead)のセルだけで決め打ちする。
+   既定の table-layout:auto + width:100% は「幅100%は最小値の目安に過ぎず、
+   実際の幅は中身（数値の桁数・＊†などのマーク・県名バッジの有無）に応じて
+   広がる」挙動になっており、時点や指標を切り替えるたびにテーブルの実幅が
+   変わっていた（実機で「テーブルの幅も内容によって変わる」と報告された
+   不具合そのもの）。fixedにすると列幅は完全にCSS/ビューポートだけで決まり、
+   収まらない中身はセル側のellipsisで省略される（テーブル自体は伸びない） */
 table.data-table {
   border-collapse: collapse;
+  table-layout: fixed;
   width: 100%;
+  min-width: 950px; /* 内容に関わらず一定。狭い画面では.table-overlayのoverflow:autoで横スクロール */
   font-size: var(--fs-xs);
 }
 
@@ -766,6 +1080,8 @@ table.data-table {
   padding: 6px 9px;
   text-align: right;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* table-layout:fixed下で中身が列幅を超えても外にはみ出させない */
 }
 
 .data-table th[scope="row"] {
@@ -784,10 +1100,14 @@ table.data-table {
   text-align: right;
 }
 
+/* table-layout:fixed の列幅は「最初の行（=このthead行）」のセル幅だけで
+   決まる。市町村名＋県外バッジ列だけ少し広めに固定し、残り8指標列は
+   自動的に均等割りされる（＝内容の文字数には一切依存しない） */
 .data-table thead th:first-child {
   text-align: left;
   left: 0;
   z-index: 2;
+  width: 150px;
 }
 
 .data-table tbody tr:nth-child(even) td {
@@ -797,15 +1117,29 @@ table.data-table {
 .cell-null { color: var(--ink-sub); }
 
 /* ===== bottom timeline bar =====
-   画面下部に固定し、実高さは app.js の syncBarHeight() が
-   --bar-h に反映する（body の padding-bottom / モバイルシートの
-   bottom オフセットはすべてこの1つの変数を参照して整合させる） */
+   画面下部に固定表示する操作バー。高さは --bar-h の固定値のみで決まり、
+   実行中に一切変化しない（JSはこの値を読みも書きもしない）。
+   以前は app.js の syncBarHeight() が実測してこの変数を書き換えていたが、
+   実機で「地図をパンすると/時点を切り替えるとバーが大きくうねる」不具合の
+   直接原因になっていた（内容→高さ測定→--bar-h書き換え→bodyのpadding変化
+   →#mapのリサイズ→MapLibreのResizeObserverがmap.resize()→'move'発火、という
+   経路が存在し、条件によっては測定→書き換えが繰り返し発火しうる構造だった）。
+   今は逆に「中身がこの固定高さに収まるように」設計する:
+   - .timeline-top / .timeline-controls は各行とも常に1行（flex-wrap:nowrap）。
+     幅が足りない場合はテキストを省略記号で切る（折り返して行数が増える＝
+     高さが変わる、を避けるため）。
+   - height（min-heightではない）+ overflow:hidden で上限を保証する。極端な
+     文字サイズ設定などで中身が収まりきらない場合も、バーの外側の高さだけは
+     絶対に変えない（中身が見切れる方が、レイアウト全体が振動するより安全）。
+   - ポップオーバー(.info-panel)はこのクリップの影響を受けないよう、
+     あえて .timeline-bar の外（兄弟要素）に出している。 */
 .timeline-bar {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  min-height: var(--bar-h);
+  height: var(--bar-h);
+  overflow: hidden;
   border-top: 1px solid var(--line);
   background: rgba(252, 252, 251, .97);
   backdrop-filter: blur(4px);
@@ -820,17 +1154,19 @@ table.data-table {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap; /* 折り返すと行数が増えてバーの高さが変わってしまうため禁止 */
   gap: 10px;
 }
 
-/* 「12月31日（水）14:00時点」相当の最長文字列（全角7字+半角9字）でも
-   幅が変わらないよう、実測値ベースのpx下限を確保する。chは半角基準の
-   単位で全角混じりの文字列には小さく出過ぎるため使わない。時点切替の
-   たびにここが伸び縮みすると、隣接する出典・注記ボタンやバー全体の
-   見た目がガチャつくため、常に最長ケース分の幅を確保しておく */
+/* 時点ごとに文字列長が変わる（例: 「8月4日（火）14:00時点」）。幅を予約して
+   伸縮を隠す旧実装は「折り返し」自体は防げていなかったため、そのアプローチは
+   やめ、flex:1 + min-width:0 + ellipsis で「常に1行、収まらなければ省略記号」
+   にする（.info-toggleは常にフル表示、余った分だけ日時側が伸縮/省略される） */
 .current-datetime {
-  flex: none;
-  min-width: 280px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--fs-xl);
   font-weight: 800;
@@ -852,20 +1188,24 @@ table.data-table {
 
 .info-toggle:hover { background: #f4f3f0; }
 
+/* .timeline-bar の外（bodyの直下）に置いたポップオーバー。バー自体は
+   overflow:hidden でクリップされるため、あえてバーの外に出して独立した
+   fixed 要素にしている。位置は --bar-h（固定値）を基準にバーの直上へ */
 .info-panel {
-  position: absolute;
-  left: 16px;
+  position: fixed;
   right: 16px;
-  bottom: 100%;
-  margin-bottom: 8px;
-  max-width: 420px;
+  left: auto;
+  bottom: calc(var(--bar-h) + 8px);
+  width: min(420px, calc(100vw - 32px));
   max-height: min(60vh, calc(100vh - var(--header-h) - 24px));
   overflow-y: auto;
+  overflow-x: hidden;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 12px 14px;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, .14);
+  z-index: 41;
 }
 
 .info-panel[hidden] { display: none; }
@@ -896,6 +1236,9 @@ table.data-table {
   font-size: var(--fs-xs);
   color: var(--ink-sub);
   line-height: 1.5;
+  /* GitHubリポジトリ名のようなスペースなしの長いトークンでも
+     ポップオーバー幅からはみ出させない */
+  overflow-wrap: anywhere;
 }
 
 .info-credit { margin-top: 6px; }
@@ -973,6 +1316,12 @@ table.data-table {
     left: 0;
     right: 0;
     bottom: var(--bar-h);
+    /* デスクトップ用の height:100% はここでは無効化する。position:fixed +
+       height:100% だと（上端を指定していないため）ビューポート全体基準の
+       100vh相当になってしまい、max-heightで55vhに切り詰められた分だけ
+       常に無駄な余白ができる。auto に戻して「中身に合わせて伸び、55vhで
+       頭打ち」という元の見た目を保つ */
+    height: auto;
     max-height: 55vh;
     border: none;
     border-top: 1px solid var(--line);
@@ -1010,10 +1359,11 @@ table.data-table {
 
   .event-meta { display: none; }
 
-  /* モバイルはフォントを少し落とす分、最長文字列の幅の下限も合わせて縮める */
-  .current-datetime { font-size: var(--fs-lg); min-width: 225px; }
+  /* 幅が狭い分だけフォントサイズを落とす。折り返しはflex-wrap:nowrap+
+     ellipsisで既に禁止されているので、ここでは行数・高さに影響しない */
+  .current-datetime { font-size: var(--fs-lg); }
 
-  .info-panel { left: 8px; right: 8px; max-width: none; }
+  .info-panel { left: 8px; right: 8px; width: auto; max-width: none; }
 
   /* 縦に狭い分、凡例は右下の避難所トグルや左下のランキングトグルと
      ぶつかるため上部の空きスペース（NavigationControlの反対側）へ */
@@ -1024,7 +1374,7 @@ table.data-table {
     bottom: auto;
   }
 
-  /* JSでの実測(--bar-h)が反映されるまでの初期値。current-datetimeの
-     折り返しを見込んで少し余裕を持たせる（日付目盛りは廃止済みなので含めない） */
-  :root { --bar-h: 154px; }
+  /* --bar-h はブレークポイントに関わらず :root の1箇所だけで定義する
+     （デスクトップ/モバイルで内容の行数が変わらないため、値も変える必要が
+     ない。複数箇所で定義すると値がずれたときにジッタの原因になる） */
 }

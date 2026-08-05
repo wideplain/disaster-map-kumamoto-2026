@@ -51,9 +51,12 @@ def main():
                     m[name]["water_period"] = w.get("period")
                     m[name]["water_note"] = w.get("note")
                     m[name]["water_outage_max"] = w.get("max")
-                    # 県資料の断水欄が未報告(null)の間は内閣府報の現在戸数で補完する
+                    # 県資料の断水欄が未報告(null)の間は内閣府報の現在戸数で補完する。
+                    # 出典が県資料と異なるため water_outage_source で区別できるようにする
+                    # （フロント側は補完値を合算に混ぜず、地図表示と注記のみに使う）
                     if m[name].get("water_outage") is None and w.get("current") is not None:
                         m[name]["water_outage"] = w.get("current")
+                        m[name]["water_outage_source"] = "内閣府"
                 elif name in munis:
                     m[name] = {
                         "water_outage": w.get("current"),
@@ -114,6 +117,32 @@ def main():
         json.dump(timeline, f, ensure_ascii=False, separators=(",", ":"))
     with open(out / "municipalities.json", "w", encoding="utf-8") as f:
         json.dump(munis, f, ensure_ascii=False, separators=(",", ":"))
+
+    news_path = ROOT / "data" / "news_events.json"
+    if news_path.exists():
+        with open(news_path, encoding="utf-8") as f:
+            ne = json.load(f)
+        reports = sorted(ne["reports"], key=lambda r: r["datetime"])
+
+        def nearest_report(dt):
+            best = None
+            for r in reports:
+                diff = abs((parse_dt(r["datetime"]) - dt).total_seconds())
+                if best is None or diff < best[0]:
+                    best = (diff, r)
+            return best[1]["id"] if best and best[0] <= 12 * 3600 else None
+
+        news = {
+            "categories": ["ライフライン", "交通", "医療・福祉", "生活・行政", "産業"],
+            "reports": reports,
+            "snapshot_report": {s["id"]: nearest_report(parse_dt(s["datetime"])) for s in snapshots},
+            "events": ne["events"],
+        }
+        with open(out / "news.json", "w", encoding="utf-8") as f:
+            json.dump(news, f, ensure_ascii=False, separators=(",", ":"))
+        print(f"news: {len(ne['events'])} events, {len(reports)} reports")
+    else:
+        print("news_events.json not found; skipped news.json")
 
     print(f"snapshots: {len(snapshots)}")
     for s in snapshots:
