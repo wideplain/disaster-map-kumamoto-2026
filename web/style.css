@@ -162,29 +162,82 @@ button, select, input {
   text-overflow: ellipsis;
 }
 
-/* 言語セレクタは内容が変わらない（言語名の一覧は固定）ので縮めず常に
-   フル表示。地球アイコン＋ネイティブ<select>（キーボード操作・スクリー
-   ンリーダー対応をブラウザ標準に任せられるため） */
-.lang-switch {
+/* ハンバーガーメニュー（テキスト版データ一覧+11言語リンクを格納）を開く
+   ボタン。タップしやすいよう44px角を確保する */
+.menu-toggle {
   flex: none;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
-  gap: 4px;
-}
-
-.lang-icon {
-  font-size: var(--fs-base);
-  line-height: 1;
-}
-
-.lang-select {
+  justify-content: center;
   border: 1px solid var(--line);
   background: #fff;
   border-radius: 6px;
-  padding: 4px 6px;
-  font-size: var(--fs-xs);
+  font-size: var(--fs-lg);
+  line-height: 1;
   color: var(--ink);
-  max-width: 40vw;
+  cursor: pointer;
+}
+
+.menu-toggle:hover { background: #f4f3f0; }
+
+/* ヘッダー下にドロップダウンするメニュー本体。hidden属性で開閉するため
+   display制御はここで完結させる（[hidden]の既定と衝突しないよう明示） */
+.site-menu {
+  position: fixed;
+  top: calc(var(--header-h) + 8px);
+  right: 14px;
+  width: min(280px, calc(100vw - 28px));
+  max-height: calc(100vh - var(--header-h) - 16px);
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .14);
+  padding: 8px;
+  z-index: 42;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.site-menu[hidden] { display: none; }
+
+.menu-data-link {
+  display: block;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-decoration: none;
+}
+.menu-data-link:hover { background: #f4f3f0; }
+
+.menu-langs {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-langs a {
+  display: block;
+  padding: 8px;
+  border-radius: 6px;
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  text-decoration: none;
+}
+.menu-langs a:hover { background: #f4f3f0; }
+
+/* 現在表示中の言語を太字+チェックで強調する */
+.menu-langs a[aria-current="true"] {
+  font-weight: 700;
+  background: #f2f1ec;
+}
+.menu-langs a[aria-current="true"]::before {
+  content: "✓ ";
 }
 
 /* 初回訪問時だけ出す1行の非公式サイト注記。localStorageで既読を覚え、
@@ -1521,16 +1574,8 @@ table.data-table {
      ない。複数箇所で定義すると値がずれたときにジッタの原因になる） */
 }
 
-/* クローラ向け実リンク（言語間・テキスト版データ）と noscript 代替。
-   アプリ本体が全画面(overflow:hidden)のため通常は画面外になるが、
-   非表示テキスト扱いを避けるため display:none にはしない */
-.static-links {
-  padding: 8px 12px;
-  font-size: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-}
+/* noscript代替。言語間・テキスト版データの実リンクはヘッダーの
+   #site-menu（.menu-toggle/.site-menu、上記）に統合済み */
 .noscript-note {
   position: fixed;
   inset: 0;

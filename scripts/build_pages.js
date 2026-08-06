@@ -335,6 +335,9 @@ const STATIC_OPEN_RE = /<!--\s*BUILD:STATIC[\s\S]*?-->/;
 const H1_APP_TITLE = '<h1 data-i18n="appTitle">令和8年熊本地震 被害状況マップ</h1>';
 const DATA_PAGE_LINK_ANCHOR =
   '<a href="data.html" id="data-page-link" data-i18n="dataPageLinkText">テキスト版データ一覧（全市町村・全指標）</a>';
+// ヘッダーのハンバーガーメニュー内、テキスト版データへのリンク(#data-page-link と同じ要領で言語別にhref/テキストを差し替える)
+const MENU_DATA_LINK_ANCHOR =
+  '<a href="data.html" id="menu-data-link" class="menu-data-link" data-i18n="dataPageLinkText">テキスト版データ一覧（全市町村・全指標）</a>';
 const STATIC_NAV_DATA_ANCHOR = '<a href="data.html">テキスト版データ一覧（全市町村・全指標）</a>';
 // noscript内の<p>は日本語の地の文にリンクが埋め込まれた1文なので、段落全体を
 // noscriptNote({link: ...})の翻訳文へ丸ごと差し替える(単純なアンカー差し替えでは
@@ -350,8 +353,13 @@ assertOnce(INDEX_TEMPLATE, "<!-- /BUILD:STATIC -->", "BUILD:STATIC close");
 assertOnce(INDEX_TEMPLATE, '<html lang="ja">', "html lang");
 assertOnce(INDEX_TEMPLATE, H1_APP_TITLE, "h1 appTitle");
 assertOnce(INDEX_TEMPLATE, DATA_PAGE_LINK_ANCHOR, "data-page-link anchor");
+assertOnce(INDEX_TEMPLATE, MENU_DATA_LINK_ANCHOR, "menu-data-link anchor");
 assertOnce(INDEX_TEMPLATE, NOSCRIPT_P_RE, "noscript paragraph");
-assertCount(INDEX_TEMPLATE, STATIC_NAV_DATA_ANCHOR, "static data.html anchor(nav+noscript)", 2);
+// 言語間リンク(#site-menu .menu-langs)。base解決で全ページ共通のためhref差し替えは不要だが、
+// data-lang の11言語ぶんがテンプレートに揃っていることだけ検査する
+assertCount(INDEX_TEMPLATE, /data-lang="[^"]+"/g, "menu-langs data-lang attrs", 11);
+// noscript内にのみ残るテキスト版データへのプレーンな<a>(idなし)
+assertCount(INDEX_TEMPLATE, STATIC_NAV_DATA_ANCHOR, "static data.html anchor(noscript)", 1);
 
 function generateIndexHtml(lang) {
   I18N.setLang(lang.code, { persist: false });
@@ -377,6 +385,11 @@ function generateIndexHtml(lang) {
   html = html.replace(
     DATA_PAGE_LINK_ANCHOR,
     `<a href="${dataHref}" id="data-page-link" data-i18n="dataPageLinkText">${dataLinkText}</a>`
+  );
+
+  html = html.replace(
+    MENU_DATA_LINK_ANCHOR,
+    `<a href="${dataHref}" id="menu-data-link" class="menu-data-link" data-i18n="dataPageLinkText">${dataLinkText}</a>`
   );
 
   html = html.replace(H1_APP_TITLE, `<h1 data-i18n="appTitle">${escapeHtml(I18N.t("appTitle"))}</h1>`);
@@ -671,6 +684,23 @@ function checkHtmlFile(file) {
       if (!fs.existsSync(target)) {
         errors.push(`${label}: data-page-link の href 先が _site 内に存在しない (${linkMatch[1]})`);
       }
+    }
+
+    // ハンバーガーメニュー内のテキスト版データリンク(#data-page-linkと同じ要領で言語別)
+    const menuLinkMatch = html.match(/href="([^"]*)" id="menu-data-link"/);
+    if (!menuLinkMatch) {
+      errors.push(`${label}: menu-data-link 要素が見つからない`);
+    } else {
+      const target = path.join(SITE_DIR, menuLinkMatch[1]);
+      if (!fs.existsSync(target)) {
+        errors.push(`${label}: menu-data-link の href 先が _site 内に存在しない (${menuLinkMatch[1]})`);
+      }
+    }
+
+    // 11言語ぶんの言語間リンクがメニューに揃っているか(hrefはbase解決の相対パスのため差し替え不要、常に一定)
+    const menuLangCount = (html.match(/data-lang="[^"]+"/g) || []).length;
+    if (menuLangCount !== 11) {
+      errors.push(`${label}: メニューの言語リンク(data-lang)が${menuLangCount}件 (期待値11)`);
     }
   }
 

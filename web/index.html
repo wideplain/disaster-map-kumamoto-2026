@@ -38,18 +38,34 @@
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
   integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous">
 <!-- ?v= はキャッシュバスター。app.js/i18n.js/style.css を変えたら3つとも同じ値で上げる -->
-<link rel="stylesheet" href="style.css?v=20260806b">
+<link rel="stylesheet" href="style.css?v=20260806c">
 </head>
 <body>
 
 <header class="app-header">
   <h1 data-i18n="appTitle">令和8年熊本地震 被害状況マップ</h1>
   <p class="event-meta" id="event-meta">M7.1・最大震度7・2026年7月28日16:27発生</p>
-  <div class="lang-switch">
-    <span class="lang-icon" aria-hidden="true">🌐</span>
-    <select id="lang-select" class="lang-select" data-i18n-aria="langSwitchAriaLabel"></select>
-  </div>
+  <button type="button" id="menu-toggle" class="menu-toggle" aria-expanded="false" aria-controls="site-menu" data-i18n-aria="menuButtonAriaLabel" aria-label="メニュー">☰</button>
 </header>
+
+<!-- クローラ向けの実リンク（テキスト版データ・言語間）を兼ねるメニュー。
+     JS無効時も素の<a>として機能する（SEO・後方互換）。開閉はJS側で制御 -->
+<nav id="site-menu" class="site-menu" hidden data-i18n-aria="menuAriaLabel" aria-label="メニュー">
+  <a href="data.html" id="menu-data-link" class="menu-data-link" data-i18n="dataPageLinkText">テキスト版データ一覧（全市町村・全指標）</a>
+  <div class="menu-langs" role="group">
+    <a href="./" data-lang="ja" hreflang="ja" lang="ja">日本語</a>
+    <a href="easy-ja/" data-lang="easy-ja" hreflang="ja" lang="ja">やさしい日本語</a>
+    <a href="en/" data-lang="en" hreflang="en" lang="en">English</a>
+    <a href="zh/" data-lang="zh" hreflang="zh-Hans" lang="zh">中文</a>
+    <a href="vi/" data-lang="vi" hreflang="vi" lang="vi">Tiếng Việt</a>
+    <a href="ko/" data-lang="ko" hreflang="ko" lang="ko">한국어</a>
+    <a href="fil/" data-lang="fil" hreflang="fil" lang="fil">Filipino</a>
+    <a href="ne/" data-lang="ne" hreflang="ne" lang="ne">नेपाली</a>
+    <a href="pt-br/" data-lang="pt-BR" hreflang="pt-BR" lang="pt-BR">Português</a>
+    <a href="id/" data-lang="id" hreflang="id" lang="id">Bahasa Indonesia</a>
+    <a href="my/" data-lang="my" hreflang="my" lang="my">မြန်မာ</a>
+  </div>
+</nav>
 
 <div id="site-banner" class="site-banner" hidden>
   <span data-i18n="bannerNotice"></span>
@@ -168,22 +184,8 @@
 </div>
 
 <!-- BUILD:STATIC このマーカー間は scripts/build_pages.js が言語別に差し替える。
-     クローラ向けの実リンク（言語間・テキスト版データ）と noscript 代替。
-     アプリは全画面(overflow:hidden)のためこのブロックは画面外だが、display:none にはしない -->
-<nav class="static-links">
-  <a href="data.html">テキスト版データ一覧（全市町村・全指標）</a>
-  <a href="./" hreflang="ja" lang="ja">日本語</a>
-  <a href="easy-ja/" hreflang="ja" lang="ja">やさしい日本語</a>
-  <a href="en/" hreflang="en" lang="en">English</a>
-  <a href="zh/" hreflang="zh-Hans" lang="zh">中文</a>
-  <a href="vi/" hreflang="vi" lang="vi">Tiếng Việt</a>
-  <a href="ko/" hreflang="ko" lang="ko">한국어</a>
-  <a href="fil/" hreflang="fil" lang="fil">Filipino</a>
-  <a href="ne/" hreflang="ne" lang="ne">नेपाली</a>
-  <a href="pt-br/" hreflang="pt-BR" lang="pt-BR">Português</a>
-  <a href="id/" hreflang="id" lang="id">Bahasa Indonesia</a>
-  <a href="my/" hreflang="my" lang="my">မြန်မာ</a>
-</nav>
+     言語間・テキスト版データの実リンクはヘッダーの #site-menu に統合済み。
+     ここに残るのは noscript 代替のみ -->
 <noscript>
   <div class="noscript-note">
     <p>このページの地図表示にはJavaScriptが必要です。数値データは
@@ -192,9 +194,9 @@
 </noscript>
 <!-- /BUILD:STATIC -->
 
-<script src="i18n.js?v=20260806b"></script>
+<script src="i18n.js?v=20260806c"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"
   integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
-<script src="app.js?v=20260806b"></script>
+<script src="app.js?v=20260806c"></script>
 </body>
 </html>

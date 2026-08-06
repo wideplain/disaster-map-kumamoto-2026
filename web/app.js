@@ -1736,20 +1736,60 @@ function applyI18nAttributes() {
   if (play) play.textContent = I18N.t(state.playTimer ? "tlPause" : "tlPlay");
 }
 
+// ハンバーガーメニュー: テキスト版データ一覧+11言語リンクをまとめたnav。
+// リンク自体はindex.html側に静的に書かれている（JS無効時もクローラ・
+// 後方互換としてそのまま機能する）ので、ここでは開閉制御とクリックの
+// インターセプト（SPA内遷移化）、現在言語のaria-current付与だけを行う
 function buildLangSwitchUI() {
-  const sel = document.getElementById("lang-select");
-  if (!sel) return;
-  sel.innerHTML = "";
-  I18N.LANGS.forEach((l) => {
-    const opt = document.createElement("option");
-    opt.value = l.code;
-    opt.textContent = l.name;
-    sel.appendChild(opt);
+  const toggle = document.getElementById("menu-toggle");
+  const menu = document.getElementById("site-menu");
+  if (!toggle || !menu) return;
+
+  function openMenu() {
+    menu.hidden = false;
+    toggle.setAttribute("aria-expanded", "true");
+  }
+  function closeMenu() {
+    menu.hidden = true;
+    toggle.setAttribute("aria-expanded", "false");
+  }
+
+  toggle.addEventListener("click", () => {
+    if (menu.hidden) openMenu();
+    else closeMenu();
   });
-  sel.value = I18N.getLang();
-  sel.addEventListener("change", () => {
-    I18N.setLang(sel.value);
-    syncUrlForLang(sel.value);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !menu.hidden) closeMenu();
+  });
+
+  // メニュー外クリックで閉じる（トグル自身のクリックは上のリスナーで
+  // 開閉済みなので、ここでは対象から除く）
+  document.addEventListener("click", (e) => {
+    if (menu.hidden) return;
+    if (menu.contains(e.target) || e.target === toggle) return;
+    closeMenu();
+  });
+
+  menu.querySelectorAll(".menu-langs a").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      const code = a.dataset.lang;
+      I18N.setLang(code);
+      syncUrlForLang(code);
+      closeMenu();
+    });
+  });
+
+  updateMenuLangCurrent();
+}
+
+// 現在言語のリンクにaria-current="true"を付ける（他は外す）
+function updateMenuLangCurrent() {
+  const current = I18N.getLang();
+  document.querySelectorAll(".menu-langs a").forEach((a) => {
+    if (a.dataset.lang === current) a.setAttribute("aria-current", "true");
+    else a.removeAttribute("aria-current");
   });
 }
 
@@ -1811,8 +1851,7 @@ function syncUrlForLang(code) {
 // ボタン類は innerHTML から再構築（リスナーも張り直し）で状態は state 側に
 // あるため失われない
 function onLanguageChanged() {
-  const sel = document.getElementById("lang-select");
-  if (sel && sel.value !== I18N.getLang()) sel.value = I18N.getLang();
+  updateMenuLangCurrent();
   applyI18nAttributes();
   buildModeSwitchUI();
   buildMetricSwitchUI();

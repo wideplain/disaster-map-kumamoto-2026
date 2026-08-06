@@ -165,6 +165,8 @@ const STRINGS = {
     dataPageLinkText: "テキスト版データ一覧（全市町村・全指標）",
     noscriptNote: "このページの地図表示にはJavaScriptが必要です。数値データは{link}で確認できます。",
     langSwitchAriaLabel: "言語 / Language",
+    menuButtonAriaLabel: "メニュー",
+    menuAriaLabel: "メニュー",
 
     modeMetric: "数値マップ",
     modeNews: "ニュースマップ",
@@ -289,6 +291,8 @@ const STRINGS = {
     dataPageLinkText: "もじで 見る データいちらん",
     noscriptNote: "地図を 見るには JavaScript が いります。数字の データは {link}で 見られます。",
     langSwitchAriaLabel: "ことば / Language",
+    menuButtonAriaLabel: "メニュー",
+    menuAriaLabel: "メニュー",
 
     modeMetric: "かずで見る",
     modeNews: "ニュースで見る",
@@ -412,6 +416,8 @@ const STRINGS = {
     dataPageLinkText: "Text version: all data tables",
     noscriptNote: "The interactive map requires JavaScript. The data is also available at {link}.",
     langSwitchAriaLabel: "Language",
+    menuButtonAriaLabel: "Menu",
+    menuAriaLabel: "Menu",
 
     modeMetric: "Data map",
     modeNews: "News map",
@@ -535,6 +541,8 @@ const STRINGS = {
     dataPageLinkText: "文字版数据一览（全部市町村・全部指标）",
     noscriptNote: "查看地图需要启用JavaScript。数据也可在{link}查看。",
     langSwitchAriaLabel: "语言",
+    menuButtonAriaLabel: "菜单",
+    menuAriaLabel: "菜单",
 
     modeMetric: "数据地图",
     modeNews: "新闻地图",
@@ -658,6 +666,8 @@ const STRINGS = {
     dataPageLinkText: "Bản văn bản: tất cả bảng dữ liệu",
     noscriptNote: "Bản đồ cần JavaScript để hiển thị. Dữ liệu cũng có tại {link}.",
     langSwitchAriaLabel: "Ngôn ngữ",
+    menuButtonAriaLabel: "Menu",
+    menuAriaLabel: "Menu",
 
     modeMetric: "Bản đồ số liệu",
     modeNews: "Bản đồ tin tức",
@@ -781,6 +791,8 @@ const STRINGS = {
     dataPageLinkText: "텍스트판 데이터 목록(전체 시정촌·전체 지표)",
     noscriptNote: "지도 표시에는 JavaScript가 필요합니다. 데이터는 {link}에서도 확인할 수 있습니다.",
     langSwitchAriaLabel: "언어",
+    menuButtonAriaLabel: "메뉴",
+    menuAriaLabel: "메뉴",
 
     modeMetric: "수치 지도",
     modeNews: "뉴스 지도",
@@ -904,6 +916,8 @@ const STRINGS = {
     dataPageLinkText: "Text na bersyon: lahat ng talahanayan ng datos",
     noscriptNote: "Kailangan ng JavaScript para sa mapa. Makikita rin ang datos sa {link}.",
     langSwitchAriaLabel: "Wika",
+    menuButtonAriaLabel: "Menu",
+    menuAriaLabel: "Menu",
 
     modeMetric: "Mapa ng datos",
     modeNews: "Mapa ng balita",
@@ -1027,6 +1041,8 @@ const STRINGS = {
     dataPageLinkText: "पाठ संस्करण: सबै तथ्याङ्क तालिका",
     noscriptNote: "नक्सा हेर्न JavaScript आवश्यक छ। तथ्याङ्क {link} मा पनि उपलब्ध छ।",
     langSwitchAriaLabel: "भाषा",
+    menuButtonAriaLabel: "मेनु",
+    menuAriaLabel: "मेनु",
 
     modeMetric: "तथ्याङ्क नक्सा",
     modeNews: "समाचार नक्सा",
@@ -1150,6 +1166,8 @@ const STRINGS = {
     dataPageLinkText: "Versão em texto: todas as tabelas de dados",
     noscriptNote: "O mapa interativo requer JavaScript. Os dados também estão disponíveis em {link}.",
     langSwitchAriaLabel: "Idioma",
+    menuButtonAriaLabel: "Menu",
+    menuAriaLabel: "Menu",
 
     modeMetric: "Mapa de dados",
     modeNews: "Mapa de notícias",
@@ -1273,6 +1291,8 @@ const STRINGS = {
     dataPageLinkText: "Versi teks: semua tabel data",
     noscriptNote: "Peta memerlukan JavaScript. Data juga tersedia di {link}.",
     langSwitchAriaLabel: "Bahasa",
+    menuButtonAriaLabel: "Menu",
+    menuAriaLabel: "Menu",
 
     modeMetric: "Peta data",
     modeNews: "Peta berita",
@@ -1396,6 +1416,8 @@ const STRINGS = {
     dataPageLinkText: "စာသားပုံစံ ဒေတာဇယားများ",
     noscriptNote: "မြေပုံကြည့်ရန် JavaScript လိုအပ်သည်။ ဒေတာကို {link} တွင်လည်း ကြည့်နိုင်သည်။",
     langSwitchAriaLabel: "ဘာသာစကား",
+    menuButtonAriaLabel: "မီနူး",
+    menuAriaLabel: "မီနူး",
 
     modeMetric: "ကိန်းဂဏန်း မြေပုံ",
     modeNews: "သတင်း မြေပုံ",
