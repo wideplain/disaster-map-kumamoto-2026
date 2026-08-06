@@ -1042,6 +1042,7 @@ function buildNewsFilterChips() {
     btn.addEventListener("click", () => {
       if (state.newsActiveCategories.has(cat)) state.newsActiveCategories.delete(cat);
       else state.newsActiveCategories.add(cat);
+      trackEvent("filter_news", { category: cat, active: state.newsActiveCategories.has(cat) });
       syncNewsFilterChips();
       renderAll();
     });
@@ -1259,7 +1260,22 @@ function updateLegend(metric, globalMax) {
    詳細パネル
    =========================================================== */
 
-function selectMunicipality(name) {
+// GA4カスタムイベント。gtagは広告ブロッカー等で存在しないことがあるため
+// 必ずガードし、計測失敗がアプリ動作に影響しないようにする
+function trackEvent(name, params) {
+  try {
+    if (typeof gtag === "function") gtag("event", name, { ...params, lang: I18N.getLang() });
+  } catch (e) {
+    /* 計測は本体機能ではないため失敗しても無視 */
+  }
+}
+
+// trigger: "click"(地図・一覧からの選択) | "hash"(共有URLからの復元)。
+// どの市町村が見られているかの計測に使う。同じ市町村の再選択は送らない
+function selectMunicipality(name, trigger) {
+  if (state.selected !== name) {
+    trackEvent("select_muni", { muni: name, mode: state.mapMode, trigger: trigger || "click" });
+  }
   state.selected = name;
   renderDetail();
   updateRankingSelectionHighlight();
@@ -1472,6 +1488,7 @@ function togglePlay() {
     return;
   }
   if (state.snapshotIndex >= data.snapshots.length - 1) setSnapshotIndex(0);
+  trackEvent("play_timeline", {});
   document.getElementById("btn-play").textContent = I18N.t("tlPause");
   state.playTimer = setInterval(() => {
     if (state.snapshotIndex >= data.snapshots.length - 1) {
@@ -1643,7 +1660,10 @@ function buildModeSwitchUI() {
     btn.dataset.mode = m.key;
     btn.setAttribute("aria-pressed", state.mapMode === m.key ? "true" : "false");
     btn.textContent = I18N.t(m.labelKey);
-    btn.addEventListener("click", () => setMapMode(m.key));
+    btn.addEventListener("click", () => {
+      if (state.mapMode !== m.key) trackEvent("change_mode", { mode: m.key });
+      setMapMode(m.key);
+    });
     el.appendChild(btn);
   });
 }
@@ -1683,6 +1703,7 @@ function buildMetricSwitchUI() {
     btn.innerHTML = `<span class="dot" style="background:${m.color}"></span>${metricLabel(m)}`;
     btn.addEventListener("click", () => {
       state.metric = m.key;
+      trackEvent("select_metric", { metric: m.key });
       syncMetricButtons();
       renderAll();
       syncHashFromState();
@@ -1748,6 +1769,7 @@ function buildLangSwitchUI() {
   function openMenu() {
     menu.hidden = false;
     toggle.setAttribute("aria-expanded", "true");
+    trackEvent("open_menu", {});
   }
   function closeMenu() {
     menu.hidden = true;
@@ -1775,11 +1797,19 @@ function buildLangSwitchUI() {
     a.addEventListener("click", (e) => {
       e.preventDefault();
       const code = a.dataset.lang;
+      const from = I18N.getLang();
+      // trackEventはsetLang前に呼ぶ(付与されるlangが切替前=fromになる)
+      if (code !== from) trackEvent("change_lang", { to: code, from });
       I18N.setLang(code);
       syncUrlForLang(code);
       closeMenu();
     });
   });
+
+  const menuDataLink = document.getElementById("menu-data-link");
+  if (menuDataLink) {
+    menuDataLink.addEventListener("click", () => trackEvent("click_data_page", { placement: "menu" }));
+  }
 
   updateMenuLangCurrent();
 }
@@ -1878,15 +1908,26 @@ function wireControls() {
     stopPlay();
     setSnapshotIndex(+e.target.value);
   });
+  // 計測はドラッグ確定時(change)のみ。inputで送るとドラッグ中に連投される
+  document.getElementById("slider").addEventListener("change", () => {
+    trackEvent("change_snapshot", { t: currentSnapshot().id, method: "slider" });
+  });
   document.getElementById("btn-prev").addEventListener("click", () => {
     stopPlay();
     prevSnapshot();
+    trackEvent("change_snapshot", { t: currentSnapshot().id, method: "prev" });
   });
   document.getElementById("btn-next").addEventListener("click", () => {
     stopPlay();
     nextSnapshot();
+    trackEvent("change_snapshot", { t: currentSnapshot().id, method: "next" });
   });
   document.getElementById("btn-play").addEventListener("click", togglePlay);
+
+  const infoDataLink = document.getElementById("data-page-link");
+  if (infoDataLink) {
+    infoDataLink.addEventListener("click", () => trackEvent("click_data_page", { placement: "info" }));
+  }
 
   document.addEventListener("keydown", (e) => {
     if (e.target === document.getElementById("slider")) return; // ネイティブのrange操作と二重処理させない
@@ -1937,6 +1978,7 @@ function wireInfoPanel() {
   function openInfo() {
     panel.hidden = false;
     btn.setAttribute("aria-expanded", "true");
+    trackEvent("open_info", {});
   }
   function closeInfo() {
     panel.hidden = true;
@@ -2035,7 +2077,7 @@ function applyStateFromHash() {
     if (metricParam && metricByKey(metricParam)) state.metric = metricParam;
 
     const muniParam = params.get("muni");
-    if (muniParam && muniData && muniData[muniParam]) selectMunicipality(muniParam);
+    if (muniParam && muniData && muniData[muniParam]) selectMunicipality(muniParam, "hash");
   } catch (e) {
     /* 不正なhashは黙って無視する */
   }
@@ -2074,6 +2116,19 @@ async function boot() {
   // 直近時点を初期表示にし、そこから過去へ遡れるようにする
   state.snapshotIndex = data.snapshots.length - 1;
   applyStateFromHash();
+  // 共有URL(ハッシュ付き)経由の流入を計測する。individual値はselect_muni等が持つ
+  if (location.hash) {
+    try {
+      const p = new URLSearchParams(location.hash.slice(1));
+      trackEvent("open_shared_url", {
+        mode: p.get("mode") || "metric",
+        has_t: !!p.get("t"),
+        has_muni: !!p.get("muni"),
+      });
+    } catch (e) {
+      /* 計測は本体機能ではないため失敗しても無視 */
+    }
+  }
 
   const sliderEl = document.getElementById("slider");
   sliderEl.max = String(data.snapshots.length - 1);

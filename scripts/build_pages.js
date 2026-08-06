@@ -489,7 +489,15 @@ function buildDataHtmlHead(lang) {
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(description)}">
 <link rel="canonical" href="${canonical}">
-${hreflangHtml}<script type="application/ld+json">${escapeJsonLd(jsonLd)}</script>
+${hreflangHtml}<script async src="https://www.googletagmanager.com/gtag/js?id=G-TCSJHDE22Z"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-TCSJHDE22Z');
+</script>
+<script type="application/ld+json">${escapeJsonLd(jsonLd)}</script>
 <style>${DATA_PAGE_CSS}</style>`;
 }
 
