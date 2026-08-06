@@ -5,9 +5,8 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# _site を gh-pages ブランチへ push して配信する。
-# actions/deploy-pages のデプロイAPIはキュー待ちが10分の上限を超えて失敗することが
-# あるため、その経路を通らないブランチ配信にしている。
+# _site を gh-pages ブランチへ push して配信する。actions/deploy-pages の
+# デプロイAPIはキュー待ちが10分の上限を超えて失敗することがあるため使わない。
 permissions:
   contents: write
 
@@ -19,12 +18,28 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # 生成に必要なのは scripts/ と web/ だけ。data/raw の抽出テキストは重いので取らない
       - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts
+            web
+          sparse-checkout-cone-mode: false
+
       - run: node scripts/build_pages.js
+
       - name: Publish to gh-pages
         run: |
           touch _site/.nojekyll
+          # ブランチ配信ではgh-pages上のCNAMEがカスタムドメイン設定の正になる
           echo "kumamoto-disaster-map-2026.wideplain.com" > _site/CNAME
+          # 既存のgh-pagesを取得して差分がなければpushしない。
+          # 内容が同じでもpushするとGitHub側のPagesビルド(数分)が無駄に走るため
+          git fetch --depth 1 origin gh-pages 2>/dev/null && git worktree add /tmp/prev FETCH_HEAD || true
+          if [ -d /tmp/prev ] && diff -qr --exclude=.git /tmp/prev _site >/dev/null 2>&1; then
+            echo "配信内容に変更なし。デプロイをスキップする"
+            exit 0
+          fi
           cd _site
           git init -q
           git config user.name "github-actions[bot]"
