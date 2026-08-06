@@ -31,13 +31,14 @@ for m in re.finditer(r'<a[^>]+href="([^"]*attachment/(\d+)\.pdf)"[^>]*>(.*?)</a>
 EOF
 
 echo "== 内閣府 防災情報ページを確認 =="
-curl -sL "https://www.bousai.go.jp/updates/r8kumamoto_jishin/index.html" \
-  | grep -oE 'pdf/r8kumamoto_jishin_[0-9-]+\.pdf' | sort -u | while read -r p; do
+# 日次報のPDFは status/ 配下にある（以前は直下だった）。どちらでも拾えるようにする
+curl -sL "https://www.bousai.go.jp/updates/r8kumamoto_jishin/status/index.html" \
+  | grep -oE '(status/)?pdf/r8kumamoto_jishin_[0-9-]+\.pdf' | sed 's|^status/||' | sort -u | while read -r p; do
     name=$(basename "$p" .pdf | sed 's/r8kumamoto_jishin_/bousai_/')
     out="data/raw/${name}.pdf"
     if [ ! -f "$out" ]; then
       echo "  新規: $name"
-      curl -sSL -o "$out" "https://www.bousai.go.jp/updates/r8kumamoto_jishin/$p"
+      curl -sSL -o "$out" "https://www.bousai.go.jp/updates/r8kumamoto_jishin/status/$p"
       pdftotext -layout "$out" "${out%.pdf}.txt"
     fi
   done
