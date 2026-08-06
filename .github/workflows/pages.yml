@@ -6,9 +6,10 @@ on:
   workflow_dispatch:
 
 # _site を gh-pages ブランチへ push して配信する。actions/deploy-pages の
-# デプロイAPIはキュー待ちが10分の上限を超えて失敗することがあるため使わない。
+# デプロイAPIはキュー待ちが10分の上限(仕様上延長不可)を超えて失敗するため使わない。
 permissions:
   contents: write
+  pages: write
 
 concurrency:
   group: pages-branch
@@ -29,23 +30,57 @@ jobs:
       - run: node scripts/build_pages.js
 
       - name: Publish to gh-pages
+        id: publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           touch _site/.nojekyll
-          # ブランチ配信ではgh-pages上のCNAMEがカスタムドメイン設定の正になる
+          # ブランチ配信では gh-pages 上の CNAME がカスタムドメイン設定の正になる。
+          # 置き忘れると Pages のビルドが失敗する
           echo "kumamoto-disaster-map-2026.wideplain.com" > _site/CNAME
-          # 既存のgh-pagesを取得して差分がなければpushしない。
-          # 内容が同じでもpushするとGitHub側のPagesビルド(数分)が無駄に走るため
-          git fetch --depth 1 origin gh-pages 2>/dev/null && git worktree add /tmp/prev FETCH_HEAD || true
-          if [ -d /tmp/prev ] && diff -qr --exclude=.git /tmp/prev _site >/dev/null 2>&1; then
-            echo "配信内容に変更なし。デプロイをスキップする"
-            exit 0
-          fi
           cd _site
           git init -q
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
+          # 配信物のツリーSHAを既存 gh-pages と比較する。内容が同じなら push しない
+          # (同じ内容でも push すると GitHub 側の Pages ビルドが数分走るため)。
+          # sparse-checkout 下では worktree でのファイル比較が使えないのでツリーSHAで判定する
+          local_tree=$(git write-tree)
+          remote_tree=$(gh api "repos/${GITHUB_REPOSITORY}/commits/gh-pages" --jq '.commit.tree.sha' 2>/dev/null || echo "")
+          if [ -n "$remote_tree" ] && [ "$local_tree" = "$remote_tree" ]; then
+            echo "配信内容に変更なし。デプロイをスキップする"
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           git commit -q -m "Deploy ${GITHUB_SHA}"
-          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:gh-pages
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:gh-pages
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
+
+      # push 直後の自動ビルドは稀に "Page build failed." で落ちる(同じ内容の再ビルドで
+      # 成功するためコンテンツ起因ではない)。結果を確認し、失敗していたら明示的に作り直す
+      - name: Verify Pages build
+        if: steps.publish.outputs.skipped == 'false'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          wait_build() {
+            for _ in $(seq 1 60); do
+              st=$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.status' 2>/dev/null || echo "")
+              case "$st" in
+                built|errored|null|"") echo "$st"; return ;;
+              esac
+              sleep 10
+            done
+            echo "timeout"
+          }
+          sleep 15
+          st=$(wait_build)
+          echo "1回目のビルド結果: $st"
+          if [ "$st" != "built" ]; then
+            echo "再ビルドを要求する"
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/builds" >/dev/null
+            st=$(wait_build)
+            echo "2回目のビルド結果: $st"
+          fi
+          [ "$st" = "built" ]
