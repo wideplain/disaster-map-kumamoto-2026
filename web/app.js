@@ -1264,6 +1264,7 @@ function selectMunicipality(name) {
   renderDetail();
   updateRankingSelectionHighlight();
   setPanelOpen("right", true);
+  syncHashFromState();
 }
 
 // ニュースマップでは、一覧・地図側はカテゴリ絞り込みの対象になるが、
@@ -1454,6 +1455,7 @@ function setSnapshotIndex(i) {
   const n = data.snapshots.length;
   state.snapshotIndex = Math.min(Math.max(i, 0), n - 1);
   renderAll();
+  syncHashFromState();
 }
 
 function nextSnapshot() {
@@ -1481,11 +1483,13 @@ function togglePlay() {
 }
 
 function stopPlay() {
+  const wasPlaying = !!state.playTimer;
   if (state.playTimer) {
     clearInterval(state.playTimer);
     state.playTimer = null;
   }
   document.getElementById("btn-play").textContent = I18N.t("tlPlay");
+  if (wasPlaying) syncHashFromState(); // 自動再生が止まったタイミングで一度だけ反映
 }
 
 /* ===========================================================
@@ -1662,6 +1666,7 @@ function setMapMode(mode) {
 
   updateLayerVisibilityForMode();
   renderAll();
+  syncHashFromState();
 }
 
 function buildMetricSwitchUI() {
@@ -1680,6 +1685,7 @@ function buildMetricSwitchUI() {
       state.metric = m.key;
       syncMetricButtons();
       renderAll();
+      syncHashFromState();
     });
     el.appendChild(btn);
   });
@@ -1741,7 +1747,64 @@ function buildLangSwitchUI() {
     sel.appendChild(opt);
   });
   sel.value = I18N.getLang();
-  sel.addEventListener("change", () => I18N.setLang(sel.value));
+  sel.addEventListener("change", () => {
+    I18N.setLang(sel.value);
+    syncUrlForLang(sel.value);
+  });
+}
+
+/* ===========================================================
+   URL同期: 言語切替時のパス書き換え
+
+   ビルド後の構成: ja（既定）はサイトルート、他言語はルート直下の小文字
+   ディレクトリ（例: en/、pt-br/、easy-ja/）。各言語ページだけが
+   <meta name="page-lang"> を持つ（ルートのjaには無い）ので、これの有無で
+   現在ページがルートか言語ページかを判定する。
+   history.replaceStateにはpathnameから組み立てた絶対パスを渡す（相対文字列は
+   <base>ではなくlocationを基準に解決されるため混乱を避ける）。
+   =========================================================== */
+
+// I18N.LANGSのcodeをそのまま小文字化すればディレクトリ名になる
+// （pt-BR→pt-br、easy-ja→easy-ja、他はそのまま）。jaはディレクトリを持たない
+function langDirForCode(code) {
+  return code === "ja" ? null : code.toLowerCase();
+}
+
+// サイトルートの絶対パス（末尾スラッシュ付き）。スクリプト読み込み時に一度だけ
+// 計算して固定する。言語切替のreplaceStateでlocation.pathnameは書き換わり続ける
+// ため、都度計算すると「/en/zh/vi/ の入れ子」や「サブパス喪失」が起きる。
+// page-langメタはビルド時に焼き込まれたDOM上の事実なので、初回のpathnameと
+// 組み合わせたときだけルート判定の根拠になる
+const SITE_ROOT_PATH = (() => {
+  let p = location.pathname;
+  if (p.endsWith("index.html")) p = p.slice(0, -"index.html".length);
+  if (!p.endsWith("/")) p += "/";
+  if (document.querySelector('meta[name="page-lang"]')) {
+    // 言語ページ: パス末尾の1階層（<dir>/）を除いたものがルート
+    const trimmed = p.slice(0, -1);
+    p = p.slice(0, trimmed.lastIndexOf("/") + 1);
+  }
+  return p;
+})();
+
+function siteRootPath() {
+  return SITE_ROOT_PATH;
+}
+
+function buildLangPath(code) {
+  const dir = langDirForCode(code);
+  const root = siteRootPath();
+  return dir ? `${root}${dir}/` : root;
+}
+
+// ?lang=は選択言語をパスそのものが表現するため書き換え後は残さない。
+// hash（表示状態の共有用、下記参照）は言語切替と独立に常に保持する
+function syncUrlForLang(code) {
+  try {
+    history.replaceState(null, "", buildLangPath(code) + location.hash);
+  } catch (e) {
+    /* replaceStateが使えない環境でも致命的ではないため無視 */
+  }
 }
 
 // 言語が変わったら、静的DOM→動的UI部品→全体再描画の順で作り直す。
@@ -1806,6 +1869,7 @@ function wireControls() {
     renderDetail();
     updateRankingSelectionHighlight();
     setPanelOpen("right", false);
+    syncHashFromState();
   });
 
   wireInfoPanel();
@@ -1870,8 +1934,59 @@ function wireEscapeKey() {
       state.selected = null;
       renderDetail();
       updateRankingSelectionHighlight();
+      syncHashFromState();
     }
   });
+}
+
+/* ===========================================================
+   URL同期: 表示状態のハッシュ共有
+
+   形式: #mode=news&t=<スナップショットID>&metric=<指標キー>&muni=<市町村名>
+   （キーは省略可・順不同）。既定値（mode=metric・最新時点・既定指標・
+   未選択）と同じ項目はキーごと省略し、全部既定ならハッシュ自体を空にする。
+   pushStateは使わず常にreplaceStateで、閲覧履歴を汚さない。
+   =========================================================== */
+
+function syncHashFromState() {
+  if (state.playTimer) return; // 自動再生中の毎tickでは書かない（止まったときにstopPlay側で一度だけ）
+  try {
+    const params = new URLSearchParams();
+    if (state.mapMode !== "metric") params.set("mode", state.mapMode);
+    if (state.snapshotIndex !== data.snapshots.length - 1) params.set("t", currentSnapshot().id);
+    if (state.metric !== "evacuees") params.set("metric", state.metric);
+    if (state.selected) params.set("muni", state.selected);
+    const qs = params.toString();
+    history.replaceState(null, "", location.pathname + location.search + (qs ? `#${qs}` : ""));
+  } catch (e) {
+    /* history.replaceStateが使えない環境でも致命的ではないため無視 */
+  }
+}
+
+// data取得後、snapshotIndex=最新を設定した直後に呼ぶ。不正な値・未知のキーは
+// すべて黙って無視し（コンソールエラーを出さない）、古い共有リンクを壊さない
+// よう該当キーが見つからない項目は既定のまま残す
+function applyStateFromHash() {
+  if (!location.hash) return;
+  try {
+    const params = new URLSearchParams(location.hash.slice(1));
+
+    if (params.get("mode") === "news") setMapMode("news");
+
+    const tParam = params.get("t");
+    if (tParam) {
+      const idx = data.snapshots.findIndex((s) => s.id === tParam);
+      if (idx !== -1) state.snapshotIndex = idx;
+    }
+
+    const metricParam = params.get("metric");
+    if (metricParam && metricByKey(metricParam)) state.metric = metricParam;
+
+    const muniParam = params.get("muni");
+    if (muniParam && muniData && muniData[muniParam]) selectMunicipality(muniParam);
+  } catch (e) {
+    /* 不正なhashは黙って無視する */
+  }
 }
 
 /* ===========================================================
@@ -1899,8 +2014,14 @@ async function boot() {
   }
   if (newsData) state.newsActiveCategories = new Set(newsData.categories);
 
+  // パネルの初期開閉（モバイルは畳む／デスクトップは開く）を、hash由来の
+  // 市町村選択より先に決めておく。順序を逆にすると、hashで開いた詳細パネルを
+  // このデフォルト適用が直後に閉じ直してしまう（モバイル時）
+  initPanelState();
+
   // 直近時点を初期表示にし、そこから過去へ遡れるようにする
   state.snapshotIndex = data.snapshots.length - 1;
+  applyStateFromHash();
 
   const sliderEl = document.getElementById("slider");
   sliderEl.max = String(data.snapshots.length - 1);
@@ -1913,8 +2034,15 @@ async function boot() {
   wireControls();
   wireLabelHint();
   initLegendDisclosure();
-  initPanelState();
   initMap();
+
+  // ?lang=xx で開かれていた場合、readInitialLangの処理は既に済んでいるので
+  // ここでURLだけを正規のパス（ルート or 言語ディレクトリ）に整える
+  try {
+    if (new URLSearchParams(location.search).has("lang")) syncUrlForLang(I18N.getLang());
+  } catch (e) {
+    /* URLSearchParams非対応環境でも致命的ではないため無視 */
+  }
 }
 
 // デスクトップでは最初から展開、モバイル(<=860px)では地図を隠さないよう

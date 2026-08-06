@@ -160,6 +160,10 @@ const WEEKDAY_NAMES = {
 const STRINGS = {
   ja: {
     appTitle: "令和8年熊本地震 被害状況マップ",
+    metaDescriptionTemplate: "令和8年熊本地震（2026年7月28日発生）の市町村別被害状況を地図と時間スライダーで可視化。{date}時点で避難者{evacuees}人・避難所{shelters}カ所・断水{water}戸。熊本県・内閣府の公表資料に基づく非公式サイト。",
+    ogDescriptionTemplate: "{date}時点: 避難者{evacuees}人・避難所{shelters}カ所・断水{water}戸。市町村別の被害状況を時系列で可視化。",
+    dataPageLinkText: "テキスト版データ一覧（全市町村・全指標）",
+    noscriptNote: "このページの地図表示にはJavaScriptが必要です。数値データは{link}で確認できます。",
     langSwitchAriaLabel: "言語 / Language",
 
     modeMetric: "数値マップ",
@@ -280,6 +284,10 @@ const STRINGS = {
   "easy-ja": {
     // 翻訳ではなく「書き換え」。短い文・やさしい言葉づかいにする（数字はそのまま）
     appTitle: "熊本の地しん　ひがいマップ",
+    metaDescriptionTemplate: "熊本の地しん（2026年7月28日）の ひがいを 地図で 見られます。{date}の とき、にげている人 {evacuees}人・にげる場所 {shelters}つ・水が出ない家 {water}けん。県や 国の しりょうを もとに した サイトです（公式では ありません）。",
+    ogDescriptionTemplate: "{date}: にげている人 {evacuees}人・にげる場所 {shelters}つ・水が出ない家 {water}けん。地図で 見られます。",
+    dataPageLinkText: "もじで 見る データいちらん",
+    noscriptNote: "地図を 見るには JavaScript が いります。数字の データは {link}で 見られます。",
     langSwitchAriaLabel: "ことば / Language",
 
     modeMetric: "かずで見る",
@@ -399,6 +407,10 @@ const STRINGS = {
 
   en: {
     appTitle: "2026 Kumamoto Earthquake Damage Map",
+    metaDescriptionTemplate: "2026 Kumamoto Earthquake damage by municipality, on an interactive timeline map. As of {date}: {evacuees} evacuees, {shelters} shelters, {water} households without water. Unofficial site based on official reports.",
+    ogDescriptionTemplate: "As of {date}: {evacuees} evacuees, {shelters} shelters, {water} households without water. Municipal damage data on a timeline map.",
+    dataPageLinkText: "Text version: all data tables",
+    noscriptNote: "The interactive map requires JavaScript. The data is also available at {link}.",
     langSwitchAriaLabel: "Language",
 
     modeMetric: "Data map",
@@ -431,7 +443,7 @@ const STRINGS = {
     tableClose: "← Back to map",
     tableHeading: "All municipalities / all indicators (current time)",
     tableColMuni: "Municipality",
-    tableCaption: "Data as of {date}. \"—\" means no data (not yet published); \"＊\" means the total uses only the known part of a breakdown; \"†\" means the value is supplemented from the Cabinet Office report because the Kumamoto Prefecture report has not yet covered it.",
+    tableCaption: "{date}. \"—\" means no data (not yet published); \"＊\" means the total uses only the known part of a breakdown; \"†\" means the value is supplemented from the Cabinet Office report because the Kumamoto Prefecture report has not yet covered it.",
 
     panelToggleDetail: "Details",
     panelRightAriaLabel: "Municipality details",
@@ -518,6 +530,10 @@ const STRINGS = {
 
   zh: {
     appTitle: "令和8年熊本地震 灾情地图",
+    metaDescriptionTemplate: "以地图和时间轴可视化令和8年熊本地震（2026年7月28日发生）各市町村的受灾情况。截至{date}：避难人数{evacuees}人、避难所{shelters}处、断水{water}户。基于熊本县・内阁府公开资料的非官方网站。",
+    ogDescriptionTemplate: "截至{date}：避难人数{evacuees}人、避难所{shelters}处、断水{water}户。按时间轴查看各市町村受灾情况。",
+    dataPageLinkText: "文字版数据一览（全部市町村・全部指标）",
+    noscriptNote: "查看地图需要启用JavaScript。数据也可在{link}查看。",
     langSwitchAriaLabel: "语言",
 
     modeMetric: "数据地图",
@@ -637,6 +653,10 @@ const STRINGS = {
 
   vi: {
     appTitle: "Bản đồ thiệt hại động đất Kumamoto 2026",
+    metaDescriptionTemplate: "Bản đồ thiệt hại động đất Kumamoto 2026 theo từng địa phương. Tính đến {date}: {evacuees} người sơ tán, {shelters} nơi sơ tán, {water} hộ mất nước. Trang không chính thức, dựa trên tài liệu công bố chính thức.",
+    ogDescriptionTemplate: "Tính đến {date}: {evacuees} người sơ tán, {shelters} nơi sơ tán, {water} hộ mất nước. Xem thiệt hại theo dòng thời gian trên bản đồ.",
+    dataPageLinkText: "Bản văn bản: tất cả bảng dữ liệu",
+    noscriptNote: "Bản đồ cần JavaScript để hiển thị. Dữ liệu cũng có tại {link}.",
     langSwitchAriaLabel: "Ngôn ngữ",
 
     modeMetric: "Bản đồ số liệu",
@@ -669,7 +689,7 @@ const STRINGS = {
     tableClose: "← Quay lại bản đồ",
     tableHeading: "Tất cả khu vực / tất cả chỉ số (thời điểm hiện tại)",
     tableColMuni: "Khu vực",
-    tableCaption: "Dữ liệu tính đến {date}. “—” là chưa có dữ liệu (chưa công bố); “＊” là tổng chỉ tính phần đã biết trong hạng mục; “†” là số liệu bổ sung từ báo cáo Văn phòng Nội các do tỉnh Kumamoto chưa công bố.",
+    tableCaption: "{date}. “—” là chưa có dữ liệu (chưa công bố); “＊” là tổng chỉ tính phần đã biết trong hạng mục; “†” là số liệu bổ sung từ báo cáo Văn phòng Nội các do tỉnh Kumamoto chưa công bố.",
 
     panelToggleDetail: "Chi tiết",
     panelRightAriaLabel: "Chi tiết khu vực",
@@ -756,6 +776,10 @@ const STRINGS = {
 
   ko: {
     appTitle: "레이와 8년 구마모토 지진 피해 지도",
+    metaDescriptionTemplate: "레이와 8년 구마모토 지진(2026년 7월 28일 발생)의 시정촌별 피해 상황을 지도와 타임 슬라이더로 시각화. {date} 기준 피난자 {evacuees}명·대피소 {shelters}개소·단수 {water}가구. 구마모토현·내각부 공표 자료에 근거한 비공식 사이트.",
+    ogDescriptionTemplate: "{date} 기준: 피난자 {evacuees}명·대피소 {shelters}개소·단수 {water}가구. 시정촌별 피해 상황을 시계열로 시각화.",
+    dataPageLinkText: "텍스트판 데이터 목록(전체 시정촌·전체 지표)",
+    noscriptNote: "지도 표시에는 JavaScript가 필요합니다. 데이터는 {link}에서도 확인할 수 있습니다.",
     langSwitchAriaLabel: "언어",
 
     modeMetric: "수치 지도",
@@ -788,7 +812,7 @@ const STRINGS = {
     tableClose: "← 지도로 돌아가기",
     tableHeading: "전체 시정촌・전체 지표（현재 시점）",
     tableColMuni: "시정촌",
-    tableCaption: "{date} 기준 데이터입니다. 「—」는 데이터 없음（미공표）, 「＊」는 일부 내역이 불명확하여 알려진 부분만의 합계, 「†」는 구마모토현 자료 미보고로 내각부 보고 값으로 보완했음을 의미합니다.",
+    tableCaption: "{date}의 데이터입니다. 「—」는 데이터 없음（미공표）, 「＊」는 일부 내역이 불명확하여 알려진 부분만의 합계, 「†」는 구마모토현 자료 미보고로 내각부 보고 값으로 보완했음을 의미합니다.",
 
     panelToggleDetail: "상세",
     panelRightAriaLabel: "시정촌 상세 정보",
@@ -875,6 +899,10 @@ const STRINGS = {
 
   fil: {
     appTitle: "Mapa ng Pinsala sa Lindol sa Kumamoto 2026",
+    metaDescriptionTemplate: "Mapa ng pinsala ng Lindol sa Kumamoto 2026 bawat munisipalidad. Sa {date}: {evacuees} evacuee, {shelters} evacuation center, {water} bahay na walang tubig. Di-opisyal na site batay sa opisyal na ulat.",
+    ogDescriptionTemplate: "Sa {date}: {evacuees} evacuee, {shelters} evacuation center, {water} bahay na walang tubig. Tingnan ang pinsala sa timeline map.",
+    dataPageLinkText: "Text na bersyon: lahat ng talahanayan ng datos",
+    noscriptNote: "Kailangan ng JavaScript para sa mapa. Makikita rin ang datos sa {link}.",
     langSwitchAriaLabel: "Wika",
 
     modeMetric: "Mapa ng datos",
@@ -907,7 +935,7 @@ const STRINGS = {
     tableClose: "← Bumalik sa mapa",
     tableHeading: "Lahat ng munisipalidad / lahat ng indicator (kasalukuyang oras)",
     tableColMuni: "Munisipalidad",
-    tableCaption: "Datos noong {date}. Ang “—” ay walang datos (hindi pa nailalathala); ang “＊” ay kabuuan ng kilalang bahagi lang; ang “†” ay pinunan ng datos mula sa ulat ng Cabinet Office dahil wala pang ulat mula sa Kumamoto Prefecture.",
+    tableCaption: "{date}. Ang “—” ay walang datos (hindi pa nailalathala); ang “＊” ay kabuuan ng kilalang bahagi lang; ang “†” ay pinunan ng datos mula sa ulat ng Cabinet Office dahil wala pang ulat mula sa Kumamoto Prefecture.",
 
     panelToggleDetail: "Detalye",
     panelRightAriaLabel: "Detalye ng munisipalidad",
@@ -994,6 +1022,10 @@ const STRINGS = {
 
   ne: {
     appTitle: "रेइवा ८ औं वर्ष कुमामोतो भूकम्प क्षति नक्सा",
+    metaDescriptionTemplate: "कुमामोतो भूकम्प २०२६ को नगरपालिका अनुसार क्षति नक्सा। {date} सम्म: विस्थापित {evacuees} जना, आश्रय स्थल {shelters}, पानी नआएका घरधुरी {water}। आधिकारिक विवरणमा आधारित अनौपचारिक साइट।",
+    ogDescriptionTemplate: "{date} सम्म: विस्थापित {evacuees} जना, आश्रय स्थल {shelters} वटा, पानी नआएका घरधुरी {water}। नक्सामा हेर्नुहोस्।",
+    dataPageLinkText: "पाठ संस्करण: सबै तथ्याङ्क तालिका",
+    noscriptNote: "नक्सा हेर्न JavaScript आवश्यक छ। तथ्याङ्क {link} मा पनि उपलब्ध छ।",
     langSwitchAriaLabel: "भाषा",
 
     modeMetric: "तथ्याङ्क नक्सा",
@@ -1026,7 +1058,7 @@ const STRINGS = {
     tableClose: "← नक्सामा फर्किनुहोस्",
     tableHeading: "सबै नगरपालिका・सबै सूचक（हालको समयबिन्दु）",
     tableColMuni: "नगरपालिका",
-    tableCaption: "{date} सम्मको तथ्याङ्क। “—” ले तथ्याङ्क नभएको (अझै प्रकाशित नभएको) जनाउँछ; “＊” ले केही विवरण अज्ञात भई थाहा भएको भागको मात्र जोड जनाउँछ; “†” ले कुमामोतो प्रान्तको प्रतिवेदन अझै नआएकाले नाइकाकुफुको प्रतिवेदनको मानले पूरा गरिएको जनाउँछ।",
+    tableCaption: "{date}को तथ्याङ्क। “—” ले तथ्याङ्क नभएको (अझै प्रकाशित नभएको) जनाउँछ; “＊” ले केही विवरण अज्ञात भई थाहा भएको भागको मात्र जोड जनाउँछ; “†” ले कुमामोतो प्रान्तको प्रतिवेदन अझै नआएकाले नाइकाकुफुको प्रतिवेदनको मानले पूरा गरिएको जनाउँछ।",
 
     panelToggleDetail: "विवरण",
     panelRightAriaLabel: "नगरपालिकाको विवरण",
@@ -1113,6 +1145,10 @@ const STRINGS = {
 
   "pt-BR": {
     appTitle: "Mapa de Danos do Terremoto de Kumamoto 2026",
+    metaDescriptionTemplate: "Mapa de danos do Terremoto de Kumamoto 2026 por município. Em {date}: {evacuees} evacuados, {shelters} abrigos, {water} domicílios sem água. Site não oficial baseado em relatórios oficiais.",
+    ogDescriptionTemplate: "Em {date}: {evacuees} evacuados, {shelters} abrigos, {water} domicílios sem água. Danos por município em mapa com linha do tempo.",
+    dataPageLinkText: "Versão em texto: todas as tabelas de dados",
+    noscriptNote: "O mapa interativo requer JavaScript. Os dados também estão disponíveis em {link}.",
     langSwitchAriaLabel: "Idioma",
 
     modeMetric: "Mapa de dados",
@@ -1145,7 +1181,7 @@ const STRINGS = {
     tableClose: "← Voltar ao mapa",
     tableHeading: "Todos os municípios / todos os indicadores (momento atual)",
     tableColMuni: "Município",
-    tableCaption: "Dados em {date}. “—” significa sem dados (ainda não publicados); “＊” significa que o total soma apenas a parte conhecida do detalhamento; “†” significa valor complementado pelo relatório do Gabinete do Governo, pois a Província de Kumamoto ainda não informou.",
+    tableCaption: "{date}. “—” significa sem dados (ainda não publicados); “＊” significa que o total soma apenas a parte conhecida do detalhamento; “†” significa valor complementado pelo relatório do Gabinete do Governo, pois a Província de Kumamoto ainda não informou.",
 
     panelToggleDetail: "Detalhes",
     panelRightAriaLabel: "Detalhes do município",
@@ -1232,6 +1268,10 @@ const STRINGS = {
 
   id: {
     appTitle: "Peta Kerusakan Gempa Kumamoto 2026",
+    metaDescriptionTemplate: "Peta kerusakan Gempa Kumamoto 2026 per wilayah. Per {date}: {evacuees} pengungsi, {shelters} tempat pengungsian, {water} rumah tangga tanpa air. Situs tidak resmi berdasarkan laporan resmi.",
+    ogDescriptionTemplate: "Per {date}: {evacuees} pengungsi, {shelters} tempat pengungsian, {water} rumah tangga tanpa air. Lihat kerusakan per wilayah di peta.",
+    dataPageLinkText: "Versi teks: semua tabel data",
+    noscriptNote: "Peta memerlukan JavaScript. Data juga tersedia di {link}.",
     langSwitchAriaLabel: "Bahasa",
 
     modeMetric: "Peta data",
@@ -1264,7 +1304,7 @@ const STRINGS = {
     tableClose: "← Kembali ke peta",
     tableHeading: "Semua wilayah / semua indikator (waktu saat ini)",
     tableColMuni: "Wilayah",
-    tableCaption: "Data per {date}. “—” berarti tidak ada data (belum dipublikasikan); “＊” berarti total hanya menjumlahkan bagian yang sudah diketahui; “†” berarti nilai dilengkapi dari laporan Kantor Kabinet karena Prefektur Kumamoto belum melaporkannya.",
+    tableCaption: "{date}. “—” berarti tidak ada data (belum dipublikasikan); “＊” berarti total hanya menjumlahkan bagian yang sudah diketahui; “†” berarti nilai dilengkapi dari laporan Kantor Kabinet karena Prefektur Kumamoto belum melaporkannya.",
 
     panelToggleDetail: "Detail",
     panelRightAriaLabel: "Detail wilayah",
@@ -1351,6 +1391,10 @@ const STRINGS = {
 
   my: {
     appTitle: "ရေဝါခေတ် ၈ နှစ် ကုမမိုတို ငလျင် ပျက်စီးမှု မြေပုံ",
+    metaDescriptionTemplate: "ကုမမိုတို ငလျင် ၂၀၂၆ မြို့နယ်အလိုက် ပျက်စီးမှု မြေပုံ။ {date} အထိ ဘေးရှောင်သူ {evacuees} ဦး၊ ခိုလှုံရာစခန်း {shelters} ခု၊ ရေမရသော အိမ်ထောင်စု {water} စု။ တရားဝင် ထုတ်ပြန်ချက်များအပေါ် အခြေခံသော အလွတ်သဘော ဆိုက်။",
+    ogDescriptionTemplate: "{date} အထိ ဘေးရှောင်သူ {evacuees} ဦး၊ ခိုလှုံရာစခန်း {shelters} ခု၊ ရေမရသော အိမ်ထောင်စု {water} စု။ မြေပုံပေါ်တွင် ကြည့်ရှုပါ။",
+    dataPageLinkText: "စာသားပုံစံ ဒေတာဇယားများ",
+    noscriptNote: "မြေပုံကြည့်ရန် JavaScript လိုအပ်သည်။ ဒေတာကို {link} တွင်လည်း ကြည့်နိုင်သည်။",
     langSwitchAriaLabel: "ဘာသာစကား",
 
     modeMetric: "ကိန်းဂဏန်း မြေပုံ",
@@ -1383,7 +1427,7 @@ const STRINGS = {
     tableClose: "← မြေပုံသို့ ပြန်သွားရန်",
     tableHeading: "မြို့နယ်အားလုံး・အညွှန်းကိန်း အားလုံး（လက်ရှိ အချိန်）",
     tableColMuni: "မြို့နယ်",
-    tableCaption: "{date} အထိ ဒေတာ။ 「—」သည် ဒေတာမရှိ（မထုတ်ပြန်ရသေး）ကို၊ 「＊」သည် အချို့အသေးစိတ် မသိရသေးသဖြင့် သိရသော အပိုင်းသာ ပေါင်းထားခြင်းကို၊ 「†」သည် ကုမမိုတို ပြည်နယ် အစီရင်ခံစာ မရရှိသေးသဖြင့် ကက်ဘိနက်ရုံး အစီရင်ခံစာ တန်ဖိုးဖြင့် ဖြည့်စွက်ထားခြင်းကို ဆိုလိုသည်။",
+    tableCaption: "{date} ဒေတာ။ 「—」သည် ဒေတာမရှိ（မထုတ်ပြန်ရသေး）ကို၊ 「＊」သည် အချို့အသေးစိတ် မသိရသေးသဖြင့် သိရသော အပိုင်းသာ ပေါင်းထားခြင်းကို၊ 「†」သည် ကုမမိုတို ပြည်နယ် အစီရင်ခံစာ မရရှိသေးသဖြင့် ကက်ဘိနက်ရုံး အစီရင်ခံစာ တန်ဖိုးဖြင့် ဖြည့်စွက်ထားခြင်းကို ဆိုလိုသည်။",
 
     panelToggleDetail: "အသေးစိတ်",
     panelRightAriaLabel: "မြို့နယ် အသေးစိတ်",
@@ -1505,6 +1549,15 @@ function readInitialLang() {
     if (fromUrl && isValidLangCode(fromUrl)) return fromUrl;
   } catch (e) {
     /* URLSearchParams非対応・SSR等は無視してlocalStorageへフォールバック */
+  }
+  try {
+    // 言語別静的ページ（/en/ 等）はビルド時に page-lang メタを持つ。
+    // URLが言語を宣言している場合は localStorage の記憶より優先する
+    const pageLangMeta = document.querySelector('meta[name="page-lang"]');
+    const pageLang = pageLangMeta && pageLangMeta.getAttribute("content");
+    if (pageLang && isValidLangCode(pageLang)) return pageLang;
+  } catch (e) {
+    /* document不可（Node実行時等）は無視 */
   }
   try {
     const stored = window.localStorage.getItem(I18N_STORAGE_KEY);

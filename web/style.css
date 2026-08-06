@@ -1520,3 +1520,23 @@ table.data-table {
      （デスクトップ/モバイルで内容の行数が変わらないため、値も変える必要が
      ない。複数箇所で定義すると値がずれたときにジッタの原因になる） */
 }
+
+/* クローラ向け実リンク（言語間・テキスト版データ）と noscript 代替。
+   アプリ本体が全画面(overflow:hidden)のため通常は画面外になるが、
+   非表示テキスト扱いを避けるため display:none にはしない */
+.static-links {
+  padding: 8px 12px;
+  font-size: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.noscript-note {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #fcfcfb;
+  padding: 24px;
+  font-size: 15px;
+  line-height: 1.7;
+}

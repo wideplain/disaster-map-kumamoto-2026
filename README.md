@@ -20,8 +20,10 @@ scripts/
   geocode.py            国土地理院ジオコーディングAPIで市町村座標を取得
   build_timeline.py     上記をマージして web/data/ を生成
   update.sh             新しい報告PDFの取得〜再生成まで一括実行
-  serve.sh              ローカル確認用サーバーの起動・停止（ポート8903固定）
-web/             デプロイ対象の静的サイト（MapLibre GL JS + 地理院タイル）
+  build_pages.js        SEO用ページ生成器（web/ → _site/。言語別ページ・data.html・sitemap.xmlを生成、自己検査つき）
+  serve.sh              ローカル確認用サーバーの起動・停止（ポート8903固定。build サブコマンドあり）
+web/             サイトの素材（MapLibre GL JS + 地理院タイル）。GitHub Pagesへの配信対象そのものではない
+_site/           配信物。CI（node scripts/build_pages.js）が web/ から生成する。gitには入れない
 ```
 
 ## データ更新
@@ -36,14 +38,33 @@ bash scripts/update.sh
 ## ローカル確認
 
 ```bash
-bash scripts/serve.sh start   # http://localhost:8903 （stop / status もあり）
+bash scripts/serve.sh start   # http://localhost:8903 で web/ をそのまま配信（stop / status もあり）
+bash scripts/serve.sh build   # node scripts/build_pages.js を実行して _site/ を生成し、それを配信
 ```
+
+SEO用の言語別ページ・data.html・sitemap.xml を手元で見たいときは `node scripts/build_pages.js`
+（どのディレクトリからでも実行可）で `_site/` を生成するか、`serve.sh build` で生成と配信を一度に行う。
 
 ## 公開（GitHub Pages）
 
-`main` ブランチへの push で `.github/workflows/pages.yml` が `web/` をそのまま GitHub Pages にデプロイする。
+`main` ブランチへの push で `.github/workflows/pages.yml` が `node scripts/build_pages.js` を実行して
+`_site/`（言語別ページ・data.html・sitemap.xml を含む配信物一式）を生成し、それを GitHub Pages にデプロイする。
+生成器は自己検査を内蔵しており、hreflang/canonical/JSON-LDなどが不正な場合はビルド自体が失敗する
+（`exit 1`）ので、壊れたページがそのまま公開されることはない。
 データ更新後は `bash scripts/update.sh` → commit → push するだけでよい。
-サイト内のパス参照はすべて相対パスなので、`https://<user>.github.io/<repo>/` のサブパス配信でも動作する。
+サイト内のパス参照はすべて相対パス（`<base>` 基準）なので、`https://<user>.github.io/<repo>/` の
+サブパス配信でも動作する。
+
+補足:
+
+- `app.js` / `i18n.js` / `style.css` の `?v=` キャッシュバスターは `web/index.html` の1箇所を上げれば、
+  そこから生成される全言語ページ（ルート + 10言語ディレクトリの `index.html`）に伝播する。
+  `data.html` は素の静的HTMLで `app.js`/`style.css` を読み込まないため対象外。
+- `<base>` を導入しているため、`web/index.html` 本体に素の `href="#..."` のような
+  ルート相対でないハッシュリンクは書かない（`<base>` の影響を受けて解決先がずれるため）。
+- `sitemap.xml` は GitHub Pages のプロジェクトページ（`/disaster-map-kumamoto-2026/` サブパス）では
+  `robots.txt` 経由でのクローラ発見が保証されないため、更新のたびに
+  [Google Search Console](https://search.google.com/search-console) から手動送信することを想定している。
 
 ## 情報ソースマップ（どこにどんな情報があるか）
 

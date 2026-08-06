@@ -23,14 +23,18 @@ stop() {
   fi
 }
 
+# DIR: 配信対象ディレクトリ。build サブコマンドのときだけ _site（生成物）、
+# それ以外は web（素材をそのまま配信、ローカルではSEO生成なしでも動く構造）
+DIR="web"
+
 start() {
   stop
-  nohup python3 -m http.server "$PORT" --directory web >/dev/null 2>&1 &
+  nohup python3 -m http.server "$PORT" --directory "$DIR" >/dev/null 2>&1 &
   echo $! > "$PIDFILE"
   disown
   sleep 1
   if curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/" | grep -q 200; then
-    echo "起動: http://localhost:$PORT/ (PID $(cat "$PIDFILE"))"
+    echo "起動: http://localhost:$PORT/ ($DIR を配信, PID $(cat "$PIDFILE"))"
   else
     echo "起動失敗" >&2
     exit 1
@@ -50,5 +54,10 @@ case "${1:-start}" in
   stop) stop ;;
   restart) start ;;
   status) status ;;
-  *) echo "usage: $0 {start|stop|restart|status}" >&2; exit 1 ;;
+  build)
+    node "$(dirname "$0")/build_pages.js"
+    DIR="_site"
+    start
+    ;;
+  *) echo "usage: $0 {start|stop|restart|status|build}" >&2; exit 1 ;;
 esac

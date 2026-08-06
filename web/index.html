@@ -2,7 +2,12 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+<!-- base は build_pages.js が言語別ページ生成時に ../ へ置換する。
+     相対参照（CSS/JS/画像/fetchの data/*.json）より前に置くこと -->
+<base href="./">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- BUILD:HEAD このマーカー間は scripts/build_pages.js が言語別に差し替える。
+     ここにあるのは日本語版のデフォルト（生成なしのローカル配信でも動く） -->
 <title>令和8年熊本地震 被害状況マップ</title>
 <meta name="description" content="令和8年熊本地震（2026年7月28日発生）の市町村別被害状況と関連ニュースを、地理院地図上に時間スライダー付きで可視化。避難者数・住家被害・断水などの推移を掲載。">
 <link rel="canonical" href="https://wideplain.github.io/disaster-map-kumamoto-2026/">
@@ -16,6 +21,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
+<!-- /BUILD:HEAD -->
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#fcfcfb">
@@ -32,7 +38,7 @@
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
   integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous">
 <!-- ?v= はキャッシュバスター。app.js/i18n.js/style.css を変えたら3つとも同じ値で上げる -->
-<link rel="stylesheet" href="style.css?v=20260806a">
+<link rel="stylesheet" href="style.css?v=20260806b">
 </head>
 <body>
 
@@ -156,11 +162,39 @@
   <p class="info-credit" data-i18n="infoAnalytics">
     本サイトは利用状況の把握のため Google アナリティクスを使用しています。
   </p>
+  <p class="info-credit">
+    <a href="data.html" id="data-page-link" data-i18n="dataPageLinkText">テキスト版データ一覧（全市町村・全指標）</a>
+  </p>
 </div>
 
-<script src="i18n.js?v=20260806a"></script>
+<!-- BUILD:STATIC このマーカー間は scripts/build_pages.js が言語別に差し替える。
+     クローラ向けの実リンク（言語間・テキスト版データ）と noscript 代替。
+     アプリは全画面(overflow:hidden)のためこのブロックは画面外だが、display:none にはしない -->
+<nav class="static-links">
+  <a href="data.html">テキスト版データ一覧（全市町村・全指標）</a>
+  <a href="./" hreflang="ja" lang="ja">日本語</a>
+  <a href="easy-ja/" hreflang="ja" lang="ja">やさしい日本語</a>
+  <a href="en/" hreflang="en" lang="en">English</a>
+  <a href="zh/" hreflang="zh-Hans" lang="zh">中文</a>
+  <a href="vi/" hreflang="vi" lang="vi">Tiếng Việt</a>
+  <a href="ko/" hreflang="ko" lang="ko">한국어</a>
+  <a href="fil/" hreflang="fil" lang="fil">Filipino</a>
+  <a href="ne/" hreflang="ne" lang="ne">नेपाली</a>
+  <a href="pt-br/" hreflang="pt-BR" lang="pt-BR">Português</a>
+  <a href="id/" hreflang="id" lang="id">Bahasa Indonesia</a>
+  <a href="my/" hreflang="my" lang="my">မြန်မာ</a>
+</nav>
+<noscript>
+  <div class="noscript-note">
+    <p>このページの地図表示にはJavaScriptが必要です。数値データは
+      <a href="data.html">テキスト版データ一覧（全市町村・全指標）</a>で確認できます。</p>
+  </div>
+</noscript>
+<!-- /BUILD:STATIC -->
+
+<script src="i18n.js?v=20260806b"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"
   integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
-<script src="app.js?v=20260806a"></script>
+<script src="app.js?v=20260806b"></script>
 </body>
 </html>

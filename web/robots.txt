@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://wideplain.github.io/disaster-map-kumamoto-2026/sitemap.xml
