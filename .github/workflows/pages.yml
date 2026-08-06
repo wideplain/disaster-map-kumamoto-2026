@@ -10,16 +10,15 @@ permissions:
   pages: write
   id-token: write
 
+# 進行中のデプロイをキャンセルするとGitHub側にdeploymentが宙に浮き、
+# 次回が deployment_queued から抜けられなくなるため false にする(公式テンプレート準拠)。
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
@@ -27,5 +26,21 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
+    steps:
+      # GitHub側のキュー待ちが10分を超えると失敗する(actions/deploy-pagesのtimeoutは
+      # 最大600000msに丸められるため延長不可)。一過性なので1回だけ自動で再試行する。
       - id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+      - if: steps.deployment.outcome == 'failure'
+        run: echo "1回目のデプロイがキュー待ちでタイムアウトしたが、再試行で成功した"
