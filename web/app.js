@@ -1791,6 +1791,19 @@ function updateMenuLangCurrent() {
     if (a.dataset.lang === current) a.setAttribute("aria-current", "true");
     else a.removeAttribute("aria-current");
   });
+  updateDataPageLinks();
+}
+
+// テキスト版データページ(data.html)へのリンクを現在言語の版に向ける。
+// hrefはビルド時に元ページの言語で焼き込まれており、<base>の解決先も
+// ページ読み込み時のURLで固定されるため、クライアントサイドで言語を
+// 切り替えた後は絶対パスで明示的に張り替えないと元言語の版に飛び続ける
+function updateDataPageLinks() {
+  const href = buildLangPath(I18N.getLang()) + "data.html";
+  ["data-page-link", "menu-data-link"].forEach((id) => {
+    const a = document.getElementById(id);
+    if (a) a.setAttribute("href", href);
+  });
 }
 
 /* ===========================================================
