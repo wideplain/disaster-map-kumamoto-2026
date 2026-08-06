@@ -16,7 +16,7 @@ const ROOT = path.join(__dirname, "..");
 const WEB_DIR = path.join(ROOT, "web");
 const SITE_DIR = path.join(ROOT, "_site");
 
-const BASE_URL = "https://wideplain.github.io/disaster-map-kumamoto-2026/";
+const BASE_URL = "https://kumamoto-disaster-map-2026.wideplain.com/";
 const OGP_IMAGE_URL = BASE_URL + "ogp.png";
 // サイト初公開日(v1.0.0公開日)。JSON-LDのdatePublished用で以後変えない
 const SITE_PUBLISHED_DATE = "2026-08-05";

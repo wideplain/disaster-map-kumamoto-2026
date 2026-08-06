@@ -1,6 +1,6 @@
 # 令和8年熊本地震 被害状況マップ
 
-**公開サイト: https://wideplain.github.io/disaster-map-kumamoto-2026/**
+**公開サイト: https://kumamoto-disaster-map-2026.wideplain.com/**
 
 > **注意**: 本サイトは公的資料の被害状況を見やすく整理・可視化した非公式サイトです。
 > 正確な情報は必ず一次ソース（熊本県・内閣府等の公式発表）を確認してください。
@@ -62,9 +62,9 @@ SEO用の言語別ページ・data.html・sitemap.xml を手元で見たいと�
   `data.html` は素の静的HTMLで `app.js`/`style.css` を読み込まないため対象外。
 - `<base>` を導入しているため、`web/index.html` 本体に素の `href="#..."` のような
   ルート相対でないハッシュリンクは書かない（`<base>` の影響を受けて解決先がずれるため）。
-- `sitemap.xml` は GitHub Pages のプロジェクトページ（`/disaster-map-kumamoto-2026/` サブパス）では
-  `robots.txt` 経由でのクローラ発見が保証されないため、更新のたびに
-  [Google Search Console](https://search.google.com/search-console) から手動送信することを想定している。
+- カスタムドメイン（ルート配信）になったため、`sitemap.xml` は `robots.txt` の `Sitemap:` 行経由で
+  クローラに発見される。反映を急ぎたい更新時は
+  [Google Search Console](https://search.google.com/search-console) からの手動送信も併用できる。
 
 ## 情報ソースマップ（どこにどんな情報があるか）
 
