@@ -57,30 +57,43 @@ jobs:
           git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:gh-pages
           echo "skipped=false" >> "$GITHUB_OUTPUT"
 
-      # push 直後の自動ビルドは稀に "Page build failed." で落ちる(同じ内容の再ビルドで
-      # 成功するためコンテンツ起因ではない)。結果を確認し、失敗していたら明示的に作り直す
-      - name: Verify Pages build
+      # 配信はGitHub内蔵ワークフロー(pages build and deployment)が行う。
+      # このワークフローはGitHub Actions側の障害("Service Unavailable"や
+      # deployment_queuedのままのTimeout)で失敗することがあり、失敗しても
+      # こちらのrunは成功で終わるため気づけない。結果を確認し、駄目なら作り直す。
+      - name: Verify Pages deployment
         if: steps.publish.outputs.skipped == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          wait_build() {
+          # 内蔵ワークフローの最新runが完了するまで待ち、conclusionを返す
+          wait_internal_run() {
             for _ in $(seq 1 60); do
-              st=$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.status' 2>/dev/null || echo "")
-              case "$st" in
-                built|errored|null|"") echo "$st"; return ;;
-              esac
+              json=$(gh run list --repo "$GITHUB_REPOSITORY" --branch gh-pages --limit 1 \
+                       --json status,conclusion,databaseId 2>/dev/null || echo "[]")
+              st=$(echo "$json" | jq -r '.[0].status // "none"')
+              if [ "$st" = "completed" ]; then
+                echo "$json" | jq -r '.[0].conclusion'
+                return
+              fi
               sleep 10
             done
             echo "timeout"
           }
-          sleep 15
-          st=$(wait_build)
-          echo "1回目のビルド結果: $st"
-          if [ "$st" != "built" ]; then
-            echo "再ビルドを要求する"
-            gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/builds" >/dev/null
-            st=$(wait_build)
-            echo "2回目のビルド結果: $st"
-          fi
-          [ "$st" = "built" ]
+
+          sleep 20
+          for attempt in 1 2 3; do
+            result=$(wait_internal_run)
+            echo "配信ワークフローの結果(${attempt}回目): ${result}"
+            if [ "$result" = "success" ]; then
+              echo "デプロイ完了"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "GitHub側の失敗とみて再ビルドを要求する"
+              gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/builds" >/dev/null || true
+              sleep 30
+            fi
+          done
+          echo "::error::Pagesの配信が3回とも完了しなかった。GitHub Actionsの障害状況を確認すること"
+          exit 1
