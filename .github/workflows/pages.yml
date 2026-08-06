@@ -19,13 +19,21 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # 生成に必要なのは scripts/ と web/ だけ。data/raw の抽出テキストは重いので取らない
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            scripts
-            web
-          sparse-checkout-cone-mode: false
+      # actions/checkout を使わず素の git で取得する。GitHub Actions のアクション
+      # 解決("Getting action download info")はサービス障害で Service Unavailable に
+      # なることがあり、uses: を1つも書かなければその段階自体を通らずに済む。
+      # 生成に必要なのは scripts/ と web/ だけなので sparse-checkout で絞る
+      - name: Checkout (scripts と web のみ)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config core.sparseCheckout true
+          git sparse-checkout init --no-cone
+          git sparse-checkout set scripts web
+          git fetch --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
 
       - run: node scripts/build_pages.js
 
