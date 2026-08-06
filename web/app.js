@@ -478,7 +478,7 @@ function onMapLoad() {
     if (e.features && e.features.length) showTooltip(e.features[0], e.lngLat);
   });
   map.on("click", "circle-hit", (e) => {
-    if (e.features && e.features.length) selectMunicipality(e.features[0].properties.name);
+    if (e.features && e.features.length) selectMunicipality(e.features[0].properties.name, "map");
   });
 
   map.on("move", () => {
@@ -857,7 +857,7 @@ function layoutNewsMarkers() {
     div.innerHTML = `<span class="dot" style="background:${color}"></span>${muniDisplayName(m.muni)}（${m.count}）`;
     const onActivate = () => {
       flyToMuni(m.muni);
-      selectMunicipality(m.muni);
+      selectMunicipality(m.muni, "news_marker");
     };
     div.addEventListener("click", onActivate);
     div.addEventListener("keydown", (e) => {
@@ -1003,7 +1003,7 @@ function updateRanking(snapshot, metric) {
       <span class="rank-value tabular">${formatNumber(r.value)}</span>`;
     const onActivate = () => {
       flyToMuni(r.name);
-      selectMunicipality(r.name);
+      selectMunicipality(r.name, "ranking");
     };
     li.addEventListener("click", onActivate);
     li.addEventListener("keydown", (e) => {
@@ -1080,8 +1080,9 @@ function renderNewsItem(ev, reportId) {
     <div class="news-item-text">${cleanNewsText(ev.text)}</div>`;
   if (ev.muni) {
     const onActivate = () => {
+      trackEvent("click_news_item", { muni: ev.muni, category: ev.category });
       flyToMuni(ev.muni);
-      selectMunicipality(ev.muni);
+      selectMunicipality(ev.muni, "news_item");
     };
     li.addEventListener("click", onActivate);
     li.addEventListener("keydown", (e) => {
@@ -1270,8 +1271,10 @@ function trackEvent(name, params) {
   }
 }
 
-// trigger: "click"(地図・一覧からの選択) | "hash"(共有URLからの復元)。
-// どの市町村が見られているかの計測に使う。同じ市町村の再選択は送らない
+// trigger: "map"(地図の円) | "news_marker"(地図上のニュースマーカー) |
+// "ranking"(市町村別ランキング) | "news_item"(ニュース一覧の項目) |
+// "hash"(共有URLからの復元)。どの市町村がどのUI経由で見られているかの
+// 計測に使う。同じ市町村の再選択は送らない
 function selectMunicipality(name, trigger) {
   if (state.selected !== name) {
     trackEvent("select_muni", { muni: name, mode: state.mapMode, trigger: trigger || "click" });
@@ -1948,6 +1951,7 @@ function wireControls() {
   document.getElementById("table-toggle").addEventListener("click", () => {
     document.getElementById("table-overlay").classList.add("is-open");
     renderTable(currentSnapshot());
+    trackEvent("open_table", { metric: state.metric });
   });
   document.getElementById("table-close").addEventListener("click", () => {
     document.getElementById("table-overlay").classList.remove("is-open");
