@@ -5,42 +5,32 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# _site を gh-pages ブランチへ push して配信する。
+# actions/deploy-pages のデプロイAPIはキュー待ちが10分の上限を超えて失敗することが
+# あるため、その経路を通らないブランチ配信にしている。
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
-# 進行中のデプロイをキャンセルするとGitHub側にdeploymentが宙に浮き、
-# 次回が deployment_queued から抜けられなくなるため false にする(公式テンプレート準拠)。
 concurrency:
-  group: pages
+  group: pages-branch
   cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
       - run: node scripts/build_pages.js
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
-    steps:
-      # GitHub側のキュー待ちが10分を超えると失敗する(actions/deploy-pagesのtimeoutは
-      # 最大600000msに丸められるため延長不可)。一過性なので1回だけ自動で再試行する。
-      - id: deployment
-        uses: actions/deploy-pages@v4
-        continue-on-error: true
-      - id: deployment_retry
-        if: steps.deployment.outcome == 'failure'
-        uses: actions/deploy-pages@v4
-      - if: steps.deployment.outcome == 'failure'
-        run: echo "1回目のデプロイがキュー待ちでタイムアウトしたが、再試行で成功した"
+      - name: Publish to gh-pages
+        run: |
+          touch _site/.nojekyll
+          echo "kumamoto-disaster-map-2026.wideplain.com" > _site/CNAME
+          cd _site
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Deploy ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
