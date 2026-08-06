@@ -18,6 +18,8 @@ const SITE_DIR = path.join(ROOT, "_site");
 
 const BASE_URL = "https://wideplain.github.io/disaster-map-kumamoto-2026/";
 const OGP_IMAGE_URL = BASE_URL + "ogp.png";
+// サイト初公開日(v1.0.0公開日)。JSON-LDのdatePublished用で以後変えない
+const SITE_PUBLISHED_DATE = "2026-08-05";
 
 const I18N = require(path.join(WEB_DIR, "i18n.js"));
 const timeline = JSON.parse(fs.readFileSync(path.join(WEB_DIR, "data", "timeline.json"), "utf8"));
@@ -209,6 +211,18 @@ function buildIndexJsonLd(lang) {
     publisher: person,
     isAccessibleForFree: true,
   };
+  // ページ更新日時の標準シグナル。Googleは sitemap の lastmod に加えて
+  // WebPage の dateModified を更新判定に使う。datePublished はサイト公開日で固定
+  const webpage = {
+    "@type": "WebPage",
+    url: pageUrl(lang),
+    name: I18N.t("appTitle"),
+    inLanguage,
+    description,
+    isPartOf: website,
+    datePublished: SITE_PUBLISHED_DATE,
+    dateModified: timeline.updated,
+  };
   const isBasedOn = latestSnapshot.sources.map((s) => ({ "@type": "CreativeWork", name: s.name, url: s.url }));
   const variableMeasured = METRICS.map((m) => ({
     "@type": "PropertyValue",
@@ -237,7 +251,7 @@ function buildIndexJsonLd(lang) {
     },
     dateModified: timeline.updated,
   };
-  return { "@context": "https://schema.org", "@graph": [website, dataset] };
+  return { "@context": "https://schema.org", "@graph": [website, webpage, dataset] };
 }
 
 function buildDataPageJsonLd(lang) {
@@ -251,6 +265,8 @@ function buildDataPageJsonLd(lang) {
     inLanguage,
     description,
     isPartOf: { "@type": "WebSite", name: I18N.t("appTitle"), url: pageUrl(lang) },
+    datePublished: SITE_PUBLISHED_DATE,
+    dateModified: timeline.updated,
   };
   // Dataset は index 側と同内容にする。description は Google の Dataset
   // リッチリザルトの必須項目(欠けると Rich Results Test で invalid 判定)
@@ -757,6 +773,9 @@ function checkHtmlFile(file) {
       nodes.forEach((node) => {
         if (node["@type"] === "Dataset" && (!node.name || !node.description)) {
           errors.push(`${label}: Dataset の name/description が欠落`);
+        }
+        if (node["@type"] === "WebPage" && (!node.dateModified || !node.datePublished)) {
+          errors.push(`${label}: WebPage の dateModified/datePublished が欠落`);
         }
       });
     } catch (e) {
