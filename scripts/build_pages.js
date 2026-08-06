@@ -431,12 +431,25 @@ h2 { font-size: 1.15rem; margin: 2em 0 0.5em; border-bottom: 1px solid var(--lin
 .updated { color: var(--ink-sub); margin: 0 0 1em; }
 .disclaimer { background: #fff6e0; border: 1px solid #e8c766; border-radius: 6px; padding: 12px 16px; font-weight: bold; }
 .back-link { display: inline-block; margin: 0 0 1em; }
-table { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
-caption { text-align: left; color: var(--ink-sub); font-size: 0.8125rem; margin-bottom: 4px; }
-th, td { border: 1px solid var(--line); padding: 4px 8px; text-align: right; white-space: nowrap; }
-th[scope="row"] { text-align: left; white-space: normal; }
-thead th { background: #f2f1ec; text-align: center; white-space: normal; }
-.table-scroll { overflow-x: auto; }
+table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.875rem; }
+caption { text-align: left; color: var(--ink-sub); font-size: 0.8125rem; margin-bottom: 6px; caption-side: top; }
+th, td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  padding: 6px 10px; text-align: right; white-space: nowrap;
+  font-variant-numeric: tabular-nums; background: #fff; }
+tbody tr:nth-child(even) th, tbody tr:nth-child(even) td { background: #f7f6f1; }
+th[scope="row"] { text-align: left; }
+thead th { background: #f2f1ec; text-align: center; white-space: normal; font-size: 0.8125rem; }
+/* 縦横スクロールしてもヘッダー行と市町村名列が見え続けるようにする。
+   sticky を効かせるため table-scroll 自体を縦横のスクロールコンテナにする */
+.table-scroll { overflow: auto; max-height: 78vh; border: 1px solid var(--line); border-radius: 6px; }
+.table-scroll table { width: max-content; min-width: 100%; }
+.table-scroll thead th { position: sticky; top: 0; z-index: 2; }
+.table-scroll th[scope="row"] { position: sticky; left: 0; z-index: 1; }
+.table-scroll thead th:first-child { position: sticky; left: 0; z-index: 3; }
+/* 0とデータなしは薄くして、実被害の数値だけが浮き上がるようにする */
+td.zero, td.nodata { color: #b8b6ae; }
+/* #muni-xxx アンカーで飛んできた行を強調 */
+tr:target th, tr:target td { background: #fff3c4; }
 footer { margin-top: 2.5em; color: var(--ink-sub); font-size: 0.8125rem; }
 `;
 
@@ -472,7 +485,8 @@ function buildPrefSummaryTable(lang) {
   METRICS.forEach((m) => {
     const val = prefMetricValue(latestSnapshot, m);
     const cell = val === null ? I18N.t("valNoData") : `${fmtNum(val, lang.code)}${I18N.t(m.unitKey)}`;
-    html += `<tr><th scope="row">${escapeHtml(I18N.t(m.labelKey))}</th><td>${escapeHtml(cell)}</td></tr>`;
+    const cls = val === null ? ' class="nodata"' : "";
+    html += `<tr><th scope="row">${escapeHtml(I18N.t(m.labelKey))}</th><td${cls}>${escapeHtml(cell)}</td></tr>`;
   });
   html += "</tbody></table></div>";
   return html;
@@ -487,7 +501,14 @@ function buildMuniTable(lang) {
     html += `<th scope="col">${escapeHtml(I18N.t(m.labelKey))}<br>(${escapeHtml(I18N.t(m.unitKey))})</th>`;
   });
   html += "</tr></thead><tbody>";
-  Object.keys(muniData).forEach((name) => {
+  // 熊本県内を先、県外(ほぼ全指標が未公表=—)を後に並べる。県外が先頭に
+  // 並ぶと実データに辿り着く前に「—」の行が続いて読みにくい
+  const names = Object.keys(muniData);
+  const orderedNames = [
+    ...names.filter((n) => muniData[n].pref === "熊本県"),
+    ...names.filter((n) => muniData[n].pref !== "熊本県"),
+  ];
+  orderedNames.forEach((name) => {
     const rec = latestSnapshot.municipalities[name];
     const loc = muniData[name];
     const displayName = escapeHtml(I18N.muniName(name, lang.code));
@@ -496,11 +517,12 @@ function buildMuniTable(lang) {
     METRICS.forEach((m) => {
       const val = rec ? m.get(rec) : null;
       if (typeof val !== "number") {
-        html += `<td>${escapeHtml(I18N.t("valDash"))}</td>`;
+        html += `<td class="nodata">${escapeHtml(I18N.t("valDash"))}</td>`;
       } else {
         const unknownMark = rec && hasUnknownComponent(m, rec) ? "＊" : "";
         const sourceMark = m.key === "water_outage" && isWaterSupplemented(rec) ? "†" : "";
-        html += `<td>${fmtNum(val, lang.code)}${unknownMark}${sourceMark}</td>`;
+        const zeroClass = val === 0 && !unknownMark && !sourceMark ? ' class="zero"' : "";
+        html += `<td${zeroClass}>${fmtNum(val, lang.code)}${unknownMark}${sourceMark}</td>`;
       }
     });
     html += "</tr>";
@@ -522,7 +544,8 @@ function buildTimeseriesTable(lang) {
     html += `<tr><th scope="row">${escapeHtml(I18N.formatDateTimeForLang(snap.datetime, lang.code))}</th>`;
     tsMetrics.forEach((m) => {
       const val = numOrNull(snap.summary[m.summaryKey]);
-      html += `<td>${val === null ? escapeHtml(I18N.t("valDash")) : fmtNum(val, lang.code)}</td>`;
+      if (val === null) html += `<td class="nodata">${escapeHtml(I18N.t("valDash"))}</td>`;
+      else html += `<td${val === 0 ? ' class="zero"' : ""}>${fmtNum(val, lang.code)}</td>`;
     });
     html += "</tr>";
   });
