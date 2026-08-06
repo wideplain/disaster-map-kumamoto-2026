@@ -243,19 +243,39 @@ function buildIndexJsonLd(lang) {
 function buildDataPageJsonLd(lang) {
   I18N.setLang(lang.code, { persist: false });
   const inLanguage = lang.hreflang || lang.htmlLang;
+  const description = metaDescriptionFor(lang);
   const webpage = {
     "@type": "WebPage",
     name: `${I18N.t("appTitle")} - ${I18N.t("dataPageLinkText")}`,
     url: dataUrl(lang),
     inLanguage,
+    description,
     isPartOf: { "@type": "WebSite", name: I18N.t("appTitle"), url: pageUrl(lang) },
   };
+  // Dataset は index 側と同内容にする。description は Google の Dataset
+  // リッチリザルトの必須項目(欠けると Rich Results Test で invalid 判定)
+  const isBasedOn = latestSnapshot.sources.map((s) => ({ "@type": "CreativeWork", name: s.name, url: s.url }));
+  const variableMeasured = METRICS.map((m) => ({
+    "@type": "PropertyValue",
+    name: I18N.t(m.labelKey),
+    unitText: I18N.t(m.unitKey).trim(),
+  }));
   const dataset = {
     "@type": "Dataset",
     name: `${I18N.t("appTitle")} - ${I18N.t("dataPageLinkText")}`,
+    description,
     url: dataUrl(lang),
+    inLanguage,
     creator: { "@type": "Person", name: "wideplain", url: "https://github.com/wideplain" },
     license: "https://creativecommons.org/licenses/by/4.0/",
+    isBasedOn,
+    temporalCoverage: `${firstSnapshot.datetime}/${latestSnapshot.datetime}`,
+    spatialCoverage: {
+      "@type": "Place",
+      name: "熊本県",
+      geo: { "@type": "GeoShape", box: "32.1 129.9 33.2 131.3" },
+    },
+    variableMeasured,
     distribution: {
       "@type": "DataDownload",
       contentUrl: BASE_URL + "data/timeline.json",
@@ -708,7 +728,14 @@ function checkHtmlFile(file) {
   if (ldMatches.length === 0) errors.push(`${label}: JSON-LD が見つからない`);
   ldMatches.forEach((m, i) => {
     try {
-      JSON.parse(m[1]);
+      const ld = JSON.parse(m[1]);
+      // Dataset は name と description が Google の必須項目
+      const nodes = ld["@graph"] || [ld];
+      nodes.forEach((node) => {
+        if (node["@type"] === "Dataset" && (!node.name || !node.description)) {
+          errors.push(`${label}: Dataset の name/description が欠落`);
+        }
+      });
     } catch (e) {
       errors.push(`${label}: JSON-LD[${i}] が parse できない: ${e.message}`);
     }
