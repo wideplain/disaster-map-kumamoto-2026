@@ -564,7 +564,9 @@ function buildSitemap() {
     return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>${alt}\n  </url>`;
   });
 
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${blocks.join(
+  // xml-stylesheet はブラウザで開いたとき人間可読のテーブルにするためのもの。
+  // クローラ(Google)はこの処理命令を無視するためSEOには影響しない
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<?xml-stylesheet type="text/xsl" href="sitemap.xsl"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${blocks.join(
     "\n"
   )}\n</urlset>\n`;
 }
@@ -688,6 +690,9 @@ generatedFiles.forEach(checkHtmlFile);
 const sitemapXml = fs.readFileSync(sitemapPath, "utf8");
 const urlCount = (sitemapXml.match(/<url>/g) || []).length;
 if (urlCount !== 22) errors.push(`sitemap.xml の <url> 数が ${urlCount} (期待値22)`);
+if (!sitemapXml.includes('<?xml-stylesheet type="text/xsl" href="sitemap.xsl"?>'))
+  errors.push("sitemap.xml に xml-stylesheet 処理命令がない");
+if (!fs.existsSync(path.join(SITE_DIR, "sitemap.xsl"))) errors.push("_site/sitemap.xsl が存在しない");
 
 if (!fs.existsSync(path.join(SITE_DIR, "data", "timeline.json"))) {
   errors.push("_site/data/timeline.json が存在しない");
