@@ -400,8 +400,9 @@ button, select, input {
   inset: 0;
 }
 
-/* 地理院タイルの利用規約上、権利表示（MapLibreのattributionコントロール）は
-   常に完全に読める状態でなければならない。#map の内部要素なのでDOM順としては
+/* 権利表示（MapLibreのattributionコントロール）は常に完全に読める状態で
+   なければならない。OpenStreetMap(ODbL)・OpenMapTiles・地理院タイル利用規約の
+   いずれも帰属表示を求めている。#map の内部要素なのでDOM順としては
    map-wrap内の他のオーバーレイ（凡例・直接ラベル・ニュースマーカー）より
    先に来てしまい、たまたま同じ画面位置に来たオーバーレイの下に隠れうる。
    z-indexを他のmap-wrap内オーバーレイより確実に高くして、常に最前面に出す */
@@ -413,6 +414,55 @@ button, select, input {
    極端に狭い幅で折り返し過ぎないよう最低限のゆとりを持たせる */
 .maplibregl-ctrl-attrib.maplibregl-compact.maplibregl-compact-show {
   max-width: min(78vw, 420px);
+}
+
+/* ===== basemap switch（モノクロ／カラー／地理院） =====
+   地図右上、NavigationControlの下に出すMapLibreのカスタムコントロール。
+   選択状態は .mode-btn と同じく aria-pressed で表す。
+   横並びにすると ne / my などの訳語で地図幅を圧迫するので縦積みにする。
+   狭い画面ではパレットアイコン1つに畳む（下の max-width:860px を参照） */
+.basemap-switch {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.basemap-switch .basemap-options {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 広い画面では畳む必要がないのでアイコンは出さず、3択を常に見せる */
+.basemap-switch .basemap-toggle {
+  display: none;
+}
+
+/* .maplibregl-ctrl-group button の width/height:29px を上書きする必要がある
+   （そのままだとラベルが「モ…」のように潰れる）。セレクタを2クラスにして勝たせる */
+.basemap-switch .basemap-btn {
+  width: auto;
+  height: auto;
+  border: none;
+  background: #fff;
+  padding: 6px 10px;
+  min-height: 44px; /* タッチターゲット */
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink-sub);
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.basemap-switch .basemap-btn + .basemap-btn {
+  border-top: 1px solid var(--line);
+}
+
+.basemap-switch .basemap-btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: #fff;
 }
 
 /* ===== mode switch（数値マップ／ニュースマップ） =====
@@ -1551,6 +1601,36 @@ table.data-table {
 
   #toggle-ranking { left: 10px; }
   #toggle-detail { right: 10px; }
+
+  /* ベースマップ切替は縦3段のままだと地図の右側をずっと占有してしまうので、
+     パレットアイコン1つに畳んでタップで開くアコーディオンにする。
+     開いた分は下へ伸ばす（NavigationControlの下なので上方向には出せない） */
+  .basemap-switch .basemap-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 29px;   /* NavigationControlの+/-と同じ大きさに揃える */
+    height: 29px;
+    border: none;
+    background: #fff;
+    color: var(--ink-sub);
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .basemap-switch.is-open .basemap-toggle {
+    background: var(--ink);
+    color: #fff;
+  }
+
+  .basemap-switch .basemap-options {
+    display: none;
+  }
+
+  .basemap-switch.is-open .basemap-options {
+    display: flex;
+    border-top: 1px solid var(--line);
+  }
 
   .event-meta { display: none; }
 

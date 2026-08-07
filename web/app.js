@@ -131,15 +131,105 @@ function waterSourceBadgeHtml(rec) {
 }
 
 /* ===========================================================
+   ベースマップの定義
+   state の初期化から参照するので、const のTDZに掛からないよう state より前に置く
+   =========================================================== */
+
+// 地理院タイル（淡色）。ラスタ。OpenFreeMapへ移行した後も選択肢として残している
+// （日本国内の地名・行政界の情報量はこちらが厚い）
+const GSI_PALE_STYLE = {
+  version: 8,
+  sources: {
+    pale: {
+      type: "raster",
+      tiles: ["https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      maxzoom: 18,
+      attribution:
+        '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>',
+    },
+  },
+  layers: [{ id: "pale", type: "raster", source: "pale" }],
+};
+
+// OpenFreeMapのスタイルJSONは attribution を持たず、ベクタソースのTileJSON
+// (https://tiles.openfreemap.org/planet) が
+// "OpenFreeMap © OpenMapTiles Data from OpenStreetMap" を返してMapLibreが自動で拾う。
+// customAttribution はその前に " | " 区切りで足される
+const OFM_ATTRIBUTION = "&copy; OpenMapTiles &copy; OpenStreetMap";
+
+const BASEMAPS = [
+  {
+    key: "mono",
+    labelKey: "basemapMono",
+    style: "https://tiles.openfreemap.org/styles/positron",
+    customAttribution: OFM_ATTRIBUTION,
+    localizeLabels: true,
+  },
+  {
+    key: "color",
+    labelKey: "basemapColor",
+    style: "https://tiles.openfreemap.org/styles/bright",
+    customAttribution: OFM_ATTRIBUTION,
+    localizeLabels: true,
+  },
+  {
+    key: "gsi",
+    labelKey: "basemapGsi",
+    style: GSI_PALE_STYLE,
+    customAttribution: "",
+    localizeLabels: false,
+  },
+];
+
+// 被害の円（赤〜橙）と干渉しにくいモノクロを既定にする
+const DEFAULT_BASEMAP = "mono";
+const BASEMAP_STORAGE_KEY = "kumamoto_map_basemap";
+
+// OSMの name:* タグ。easy-jaはja、pt-BRはpt。fil/ne/my はOSM側にタグがほぼ無いので
+// applyLabelLanguage() の coalesce が name:latin → name へ落とす
+const OSM_NAME_TAG = {
+  ja: "ja", "easy-ja": "ja", en: "en", zh: "zh", vi: "vi", ko: "ko",
+  fil: "fil", ne: "ne", "pt-BR": "pt", id: "id", my: "my",
+};
+
+function basemapDef(key) {
+  return BASEMAPS.find((b) => b.key === key) || BASEMAPS[0];
+}
+
+// 表示の好みなので、共有される URL ハッシュ（mode/t/metric/muni）ではなく
+// localStorage に持つ。i18n.js の言語設定と同じくプライベートモード等での
+// 失敗は握りつぶして起動を続ける
+function readInitialBasemap() {
+  try {
+    const stored = window.localStorage.getItem(BASEMAP_STORAGE_KEY);
+    if (stored && BASEMAPS.some((b) => b.key === stored)) return stored;
+  } catch (e) {
+    /* localStorage不可でも既定値で起動する */
+  }
+  return DEFAULT_BASEMAP;
+}
+
+function persistBasemap(key) {
+  try {
+    window.localStorage.setItem(BASEMAP_STORAGE_KEY, key);
+  } catch (e) {
+    /* 保存できなくても致命的ではないので無視 */
+  }
+}
+
+/* ===========================================================
    状態
    =========================================================== */
 
 let map = null;
+let attributionCtrl = null; // ベースマップ切替のたびに作り直す
 let muniData = null;
 let data = null;
 let newsData = null; // 読み込み失敗時もnullのまま許容し、数値マップ側には一切影響させない
 
 const state = {
+  basemap: readInitialBasemap(), // "mono" | "color" | "gsi"
   mapMode: "metric", // "metric" | "news" — 指標選択(metric)とは独立した状態
   metric: "evacuees",
   snapshotIndex: 0,
@@ -392,79 +482,32 @@ function updateLayerVisibilityForMode() {
 function initMap() {
   map = new maplibregl.Map({
     container: "map",
-    style: {
-      version: 8,
-      sources: {
-        pale: {
-          type: "raster",
-          tiles: ["https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png"],
-          tileSize: 256,
-          maxzoom: 18,
-          attribution:
-            '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>',
-        },
-      },
-      layers: [{ id: "pale", type: "raster", source: "pale" }],
-    },
+    style: basemapDef(state.basemap).style,
     center: [130.9, 32.6],
     zoom: 8.5,
     minZoom: 6,
     maxZoom: 18,
+    // 権利表示はベースマップごとに文言が変わるため、既定のコントロールは使わず
+    // applyAttribution() が付け外しする（customAttributionはコントロール単位で固定のため）
+    attributionControl: false,
   });
 
+  applyAttribution(state.basemap);
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+  map.addControl(basemapControl, "top-right");
 
-  map.on("load", onMapLoad);
+  // style.load は初回とsetStyle後の両方で発火する。ソース・レイヤーは
+  // setStyleで破棄されるのでこちらで作り直す。loadは一度きりなので、
+  // 消えないもの（DOMマーカー・イベント登録）だけをそちらに置く
+  map.on("style.load", onStyleLoad);
+  map.on("load", onMapFirstLoad);
 }
 
-function onMapLoad() {
-  map.addSource("municipalities", {
-    type: "geojson",
-    data: { type: "FeatureCollection", features: [] },
-  });
-
-  map.addLayer({
-    id: "circle-fill",
-    type: "circle",
-    source: "municipalities",
-    paint: {
-      "circle-radius": ["get", "radius"],
-      "circle-color": ["get", "color"],
-      "circle-opacity": ["get", "fillOpacity"],
-      "circle-stroke-color": ["get", "color"],
-      "circle-stroke-width": ["get", "strokeWidth"],
-      "circle-radius-transition": CIRCLE_TRANSITION,
-      "circle-opacity-transition": CIRCLE_TRANSITION,
-      "circle-stroke-width-transition": CIRCLE_TRANSITION,
-    },
-  });
-
-  map.addLayer({
-    id: "circle-ring",
-    type: "circle",
-    source: "municipalities",
-    paint: {
-      "circle-radius": ["+", ["get", "radius"], 1.5],
-      "circle-opacity": 0,
-      "circle-stroke-color": "#ffffff",
-      "circle-stroke-width": 1,
-      "circle-stroke-opacity": ["case", ["==", ["get", "fillOpacity"], 0], 0, 1],
-      "circle-radius-transition": CIRCLE_TRANSITION,
-    },
-  });
-
-  // クリック・ホバー判定用に見た目より大きい透明レイヤーを重ねる（小さい円は指/カーソルで拾いにくいため）
-  map.addLayer({
-    id: "circle-hit",
-    type: "circle",
-    source: "municipalities",
-    paint: {
-      "circle-radius": ["get", "hitRadius"],
-      "circle-opacity": 0,
-      "circle-stroke-opacity": 0,
-    },
-  });
-
+// setStyle後も生き残るもの（HTML要素ベースのMarker、レイヤー限定ハンドラ、
+// mapレベルのイベント）だけをここで一度だけ登録する。レイヤー限定ハンドラは
+// 登録時にそのレイヤーが存在しなくてもよく、レイヤーを消して作り直しても
+// 有効なままなので、再登録すると二重に発火してしまう
+function onMapFirstLoad() {
   addEpicenterMarker();
 
   map.on("mouseenter", "circle-hit", () => {
@@ -486,8 +529,213 @@ function onMapLoad() {
     else repositionNewsMarkers();
   });
 
+  // 地図側をタップしたらベースマップの選択肢を畳む（狭い画面で開きっぱなしに
+  // ならないように）。コントロールはcanvasの外なので自分のクリックでは発火しない
+  map.on("click", () => setBasemapSwitchOpen(false));
+}
+
+function onStyleLoad() {
+  ensureOverlayLayers();
+  applyLabelLanguage();
   updateLayerVisibilityForMode();
-  renderAll();
+  if (data) renderAll();
+}
+
+// setStyleの差分適用がレイヤーを残す場合があるので、無いときだけ足す冪等な関数にする。
+// 円レイヤーは最後に追加＝最前面。beforeIdは指定しない（ベクタタイルの地名ラベルより
+// 円を前に出す。ラスタ時代と重なり順の見た目を変えないため）
+function ensureOverlayLayers() {
+  if (!map.getSource("municipalities")) {
+    map.addSource("municipalities", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    });
+  }
+
+  if (!map.getLayer("circle-fill")) {
+    map.addLayer({
+      id: "circle-fill",
+      type: "circle",
+      source: "municipalities",
+      paint: {
+        "circle-radius": ["get", "radius"],
+        "circle-color": ["get", "color"],
+        "circle-opacity": ["get", "fillOpacity"],
+        "circle-stroke-color": ["get", "color"],
+        "circle-stroke-width": ["get", "strokeWidth"],
+        "circle-radius-transition": CIRCLE_TRANSITION,
+        "circle-opacity-transition": CIRCLE_TRANSITION,
+        "circle-stroke-width-transition": CIRCLE_TRANSITION,
+      },
+    });
+  }
+
+  if (!map.getLayer("circle-ring")) {
+    map.addLayer({
+      id: "circle-ring",
+      type: "circle",
+      source: "municipalities",
+      paint: {
+        "circle-radius": ["+", ["get", "radius"], 1.5],
+        "circle-opacity": 0,
+        "circle-stroke-color": "#ffffff",
+        "circle-stroke-width": 1,
+        "circle-stroke-opacity": ["case", ["==", ["get", "fillOpacity"], 0], 0, 1],
+        "circle-radius-transition": CIRCLE_TRANSITION,
+      },
+    });
+  }
+
+  // クリック・ホバー判定用に見た目より大きい透明レイヤーを重ねる（小さい円は指/カーソルで拾いにくいため）
+  if (!map.getLayer("circle-hit")) {
+    map.addLayer({
+      id: "circle-hit",
+      type: "circle",
+      source: "municipalities",
+      paint: {
+        "circle-radius": ["get", "hitRadius"],
+        "circle-opacity": 0,
+        "circle-stroke-opacity": 0,
+      },
+    });
+  }
+}
+
+/* ===========================================================
+   ベースマップ（モノクロ／カラー／地理院）
+   =========================================================== */
+
+function setBasemap(key) {
+  if (state.basemap === key || !map) return;
+  state.basemap = key;
+  persistBasemap(key);
+  syncBasemapButtons();
+  hideTooltip(); // 差し替え中に開いたままのポップアップを畳む
+  applyAttribution(key);
+  // diff:false で必ず作り直す。positron⇄brightのような近いスタイル同士だと
+  // 差分適用が中途半端に成立して挙動が読みにくくなるため一定にする
+  map.setStyle(basemapDef(key).style, { diff: false });
+}
+
+// 権利表示のコントロールを作り直す。customAttributionはコントロール生成時に
+// 固定されるので、ベースマップを切り替えるたびに付け直す必要がある。
+// compact:true は MapLibre の既定値。AttributionControl は引数を渡すと既定の
+// オプションオブジェクトごと置き換わる仕様なので、明示しないと畳める表示
+// （ⓘボタン）でなくなり、幅の広い画面で権利表示が長い帯になってしまう
+function applyAttribution(key) {
+  if (attributionCtrl) map.removeControl(attributionCtrl);
+  attributionCtrl = new maplibregl.AttributionControl({
+    compact: true,
+    customAttribution: basemapDef(key).customAttribution || undefined,
+  });
+  map.addControl(attributionCtrl);
+}
+
+// ベクタタイル（OpenMapTiles）の地名ラベルを表示言語に合わせる。
+// 訳が無い地名は name:latin → name（現地表記）へ落とす。ラスタの地理院タイルには
+// symbolレイヤーが無いので何もしない
+function applyLabelLanguage() {
+  if (!map || !basemapDef(state.basemap).localizeLabels) return;
+  const tag = OSM_NAME_TAG[I18N.getLang()] || "en";
+  const expr = ["coalesce", ["get", `name:${tag}`], ["get", "name:latin"], ["get", "name"]];
+  map.getStyle().layers.forEach((l) => {
+    if (l.type === "symbol" && l.layout && l.layout["text-field"]) {
+      map.setLayoutProperty(l.id, "text-field", expr);
+    }
+  });
+}
+
+// 地図右上の切替UI。MapLibreのカスタムコントロール（onAdd/onRemoveを持つオブジェクト）。
+// 中身のボタンは .mode-switch と同じ流儀（data属性 + aria-pressed）で組む。
+// 狭い画面ではパレットアイコン1つに畳み、タップで3択を開く（縦3段のままだと
+// 地図の右側をずっと占有してしまうため）。開閉の見え方はCSSのメディアクエリが担当し、
+// JSは is-open と aria-expanded の管理だけを持つ
+const BASEMAP_ICON_SVG =
+  '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">' +
+  '<path fill="currentColor" d="M12 3a9 9 0 0 0 0 18c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01' +
+  '-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.42-4.03-8-9-8Z' +
+  'm-5.5 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3-4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z' +
+  'm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3.5 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/></svg>';
+
+const basemapControl = {
+  onAdd() {
+    const el = document.createElement("div");
+    el.className = "maplibregl-ctrl maplibregl-ctrl-group basemap-switch";
+    el.id = "basemap-switch";
+    basemapControl._container = el;
+    buildBasemapSwitchUI();
+    return el;
+  },
+  onRemove() {
+    if (basemapControl._container) basemapControl._container.remove();
+    basemapControl._container = null;
+  },
+  _container: null,
+};
+
+function buildBasemapSwitchUI() {
+  const el = basemapControl._container;
+  if (!el) return;
+  const wasOpen = el.classList.contains("is-open");
+  el.innerHTML = "";
+
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "basemap-toggle";
+  toggle.id = "basemap-toggle";
+  toggle.setAttribute("aria-controls", "basemap-options");
+  toggle.innerHTML = BASEMAP_ICON_SVG;
+  toggle.addEventListener("click", () => setBasemapSwitchOpen(!el.classList.contains("is-open")));
+  el.appendChild(toggle);
+
+  const options = document.createElement("div");
+  options.className = "basemap-options";
+  options.id = "basemap-options";
+  options.setAttribute("role", "group");
+  options.setAttribute("aria-label", I18N.t("basemapAriaLabel"));
+  BASEMAPS.forEach((b) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "basemap-btn";
+    btn.dataset.basemap = b.key;
+    btn.setAttribute("aria-pressed", state.basemap === b.key ? "true" : "false");
+    btn.textContent = I18N.t(b.labelKey);
+    btn.addEventListener("click", () => {
+      if (state.basemap !== b.key) trackEvent("change_basemap", { basemap: b.key });
+      setBasemap(b.key);
+      setBasemapSwitchOpen(false); // 畳んで地図を広く戻す（PCではCSS上いつも開いている）
+    });
+    options.appendChild(btn);
+  });
+  el.appendChild(options);
+
+  setBasemapSwitchOpen(wasOpen);
+  syncBasemapButtons(); // 畳んだアイコンのaria-label/titleを現在の選択に合わせる
+}
+
+function setBasemapSwitchOpen(open) {
+  const el = basemapControl._container;
+  if (!el) return;
+  el.classList.toggle("is-open", open);
+  const toggle = el.querySelector(".basemap-toggle");
+  if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+// コントロールのDOMは onAdd の戻り値としてMapLibreが後から挿入するので、
+// 生成直後は document から引けない。必ずコンテナ起点で辿る
+function syncBasemapButtons() {
+  const el = basemapControl._container;
+  if (!el) return;
+  el.querySelectorAll(".basemap-btn").forEach((b) => {
+    b.setAttribute("aria-pressed", b.dataset.basemap === state.basemap ? "true" : "false");
+  });
+  // 畳んだ状態でも今どれを選んでいるかが分かるようにアイコン側へ持たせる
+  const toggle = el.querySelector(".basemap-toggle");
+  if (toggle) {
+    const label = `${I18N.t("basemapAriaLabel")}: ${I18N.t(basemapDef(state.basemap).labelKey)}`;
+    toggle.setAttribute("aria-label", label);
+    toggle.title = label;
+  }
 }
 
 function addEpicenterMarker() {
@@ -1906,7 +2154,9 @@ function onLanguageChanged() {
   buildModeSwitchUI();
   buildMetricSwitchUI();
   buildNewsFilterChips();
+  buildBasemapSwitchUI();
   buildEventMeta();
+  applyLabelLanguage(); // ベクタタイルの地名ラベルも表示言語に合わせる
   renderAll();
 }
 

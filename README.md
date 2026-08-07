@@ -6,7 +6,8 @@
 > 正確な情報は必ず一次ソース（熊本県・内閣府等の公式発表）を確認してください。
 
 熊本県災害対策本部会議資料・内閣府被害状況報のPDFから市町村別の被害データを抽出し、
-国土地理院の淡色地図タイル上に時系列（時間スライダー付き）で可視化する静的サイト。
+地図上に時系列（時間スライダー付き）で可視化する静的サイト。
+ベースマップはモノクロ（既定）／カラー／地理院淡色の3種類を地図右上で切り替えられる。
 
 ## 構成
 
@@ -22,7 +23,7 @@ scripts/
   update.sh             新しい報告PDFの取得〜再生成まで一括実行
   build_pages.js        SEO用ページ生成器（web/ → _site/。言語別ページ・data.html・sitemap.xmlを生成、自己検査つき）
   serve.sh              ローカル確認用サーバーの起動・停止（ポート8903固定。build サブコマンドあり）
-web/             サイトの素材（MapLibre GL JS + 地理院タイル）。GitHub Pagesへの配信対象そのものではない
+web/             サイトの素材（MapLibre GL JS + OpenFreeMap／地理院タイル）。GitHub Pagesへの配信対象そのものではない
 _site/           配信物。CI（node scripts/build_pages.js）が web/ から生成する。gitには入れない
 ```
 
@@ -89,7 +90,12 @@ SEO用の言語別ページ・data.html・sitemap.xml を手元で見たいと�
 
 ### 地図・座標
 
-- [地理院タイル（淡色地図）](https://maps.gsi.go.jp/development/ichiran.html)
+- ベースマップ（既定=モノクロ / カラー）: [OpenFreeMap](https://openfreemap.org/) の
+  `positron` / `bright` スタイル。データは [OpenMapTiles](https://www.openmaptiles.org/) スキーマの
+  [OpenStreetMap](https://www.openstreetmap.org/copyright)（ODbL）
+  - ベクタタイルなので拡大しても文字がボケず、地名ラベルを表示言語（11言語）に追従させている
+    （OSM の `name:*` タグ。訳が無い地名は `name:latin` → `name` へフォールバック）
+- ベースマップ（地理院）: [地理院タイル（淡色地図）](https://maps.gsi.go.jp/development/ichiran.html)
 - 市町村座標は[国土地理院ジオコーディングAPI](https://msearch.gsi.go.jp/address-search/AddressSearch)（`geocode.py`）
 - 震央座標は地震調査研究推進本部の評価文書（北緯32度34分・東経130度42分）による
 
@@ -101,4 +107,6 @@ SEO用の言語別ページ・data.html・sitemap.xml を手元で見たいと�
 
 - コード: [MIT License](LICENSE)
 - `data/raw/` の報告書PDF・抽出テキストおよびそれに由来するデータ: 各発行元（熊本県・内閣府ほか）の利用規約に従う。政府標準利用規約（第2.0版、CC BY 4.0互換）に基づく出典明記のうえでの二次利用を想定している
-- 地図タイルは表示時に国土地理院のサーバーから直接配信される（[地理院タイル利用規約](https://maps.gsi.go.jp/development/ichiran.html)）
+- 地図タイルは表示時に各配信元から直接配信される。いずれも帰属表示が必要で、地図右上の権利表示に出している
+  - OpenFreeMap（既定）: [OpenStreetMap 貢献者](https://www.openstreetmap.org/copyright)（ODbL）／[OpenMapTiles](https://www.openmaptiles.org/)
+  - 地理院淡色: [地理院タイル利用規約](https://maps.gsi.go.jp/development/ichiran.html)（国土地理院のサーバーから直接配信）

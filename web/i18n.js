@@ -172,6 +172,11 @@ const STRINGS = {
     modeNews: "ニュースマップ",
     modeAriaLabel: "地図の表示モード",
 
+    basemapAriaLabel: "地図の背景",
+    basemapMono: "モノクロ",
+    basemapColor: "カラー",
+    basemapGsi: "地理院",
+
     panelLeftAriaLabel: "指標選択と市町村別の状況",
     panelToggleRanking: "指標・市町村別",
     panelCloseAriaLabel: "このパネルを閉じる",
@@ -300,6 +305,11 @@ const STRINGS = {
     modeNews: "ニュースで見る",
     modeAriaLabel: "地図の見かたをえらぶ",
 
+    basemapAriaLabel: "地図のいろ",
+    basemapMono: "しろくろ",
+    basemapColor: "カラー",
+    basemapGsi: "日本の地図",
+
     panelLeftAriaLabel: "見るものと町のじょうほう",
     panelToggleRanking: "見るもの・町",
     panelCloseAriaLabel: "とじる",
@@ -426,6 +436,11 @@ const STRINGS = {
     modeMetric: "Data map",
     modeNews: "News map",
     modeAriaLabel: "Map display mode",
+
+    basemapAriaLabel: "Base map",
+    basemapMono: "Mono",
+    basemapColor: "Color",
+    basemapGsi: "GSI",
 
     panelLeftAriaLabel: "Indicator selection and municipality data",
     panelToggleRanking: "Indicator / municipalities",
@@ -554,6 +569,11 @@ const STRINGS = {
     modeNews: "新闻地图",
     modeAriaLabel: "地图显示模式",
 
+    basemapAriaLabel: "底图",
+    basemapMono: "单色",
+    basemapColor: "彩色",
+    basemapGsi: "地理院",
+
     panelLeftAriaLabel: "指标选择与各市町村情况",
     panelToggleRanking: "指标・各市町村",
     panelCloseAriaLabel: "关闭此面板",
@@ -680,6 +700,11 @@ const STRINGS = {
     modeMetric: "Bản đồ số liệu",
     modeNews: "Bản đồ tin tức",
     modeAriaLabel: "Chế độ hiển thị bản đồ",
+
+    basemapAriaLabel: "Bản đồ nền",
+    basemapMono: "Đơn sắc",
+    basemapColor: "Màu",
+    basemapGsi: "GSI",
 
     panelLeftAriaLabel: "Chọn chỉ số và tình hình theo thành phố/thị trấn",
     panelToggleRanking: "Chỉ số / khu vực",
@@ -808,6 +833,11 @@ const STRINGS = {
     modeNews: "뉴스 지도",
     modeAriaLabel: "지도 표시 모드",
 
+    basemapAriaLabel: "지도 배경",
+    basemapMono: "흑백",
+    basemapColor: "컬러",
+    basemapGsi: "지리원",
+
     panelLeftAriaLabel: "지표 선택 및 시정촌별 상황",
     panelToggleRanking: "지표・시정촌",
     panelCloseAriaLabel: "이 패널 닫기",
@@ -934,6 +964,11 @@ const STRINGS = {
     modeMetric: "Mapa ng datos",
     modeNews: "Mapa ng balita",
     modeAriaLabel: "Mode ng pagpapakita ng mapa",
+
+    basemapAriaLabel: "Base map",
+    basemapMono: "Mono",
+    basemapColor: "Kulay",
+    basemapGsi: "GSI",
 
     panelLeftAriaLabel: "Pagpili ng indicator at kalagayan bawat munisipalidad",
     panelToggleRanking: "Indicator / munisipalidad",
@@ -1062,6 +1097,11 @@ const STRINGS = {
     modeNews: "समाचार नक्सा",
     modeAriaLabel: "नक्सा देखाउने तरिका",
 
+    basemapAriaLabel: "नक्साको पृष्ठभूमि",
+    basemapMono: "सेतो-कालो",
+    basemapColor: "रङ्गीन",
+    basemapGsi: "GSI",
+
     panelLeftAriaLabel: "सूचक छनोट र नगरपालिकाअनुसारको अवस्था",
     panelToggleRanking: "सूचक・नगरपालिका",
     panelCloseAriaLabel: "यो प्यानल बन्द गर्नुहोस्",
@@ -1188,6 +1228,11 @@ const STRINGS = {
     modeMetric: "Mapa de dados",
     modeNews: "Mapa de notícias",
     modeAriaLabel: "Modo de exibição do mapa",
+
+    basemapAriaLabel: "Mapa base",
+    basemapMono: "Mono",
+    basemapColor: "Cor",
+    basemapGsi: "GSI",
 
     panelLeftAriaLabel: "Seleção de indicador e situação por município",
     panelToggleRanking: "Indicador / municípios",
@@ -1316,6 +1361,11 @@ const STRINGS = {
     modeNews: "Peta berita",
     modeAriaLabel: "Mode tampilan peta",
 
+    basemapAriaLabel: "Peta dasar",
+    basemapMono: "Mono",
+    basemapColor: "Warna",
+    basemapGsi: "GSI",
+
     panelLeftAriaLabel: "Pemilihan indikator dan kondisi tiap kota/kabupaten",
     panelToggleRanking: "Indikator / wilayah",
     panelCloseAriaLabel: "Tutup panel ini",
@@ -1442,6 +1492,11 @@ const STRINGS = {
     modeMetric: "ကိန်းဂဏန်း မြေပုံ",
     modeNews: "သတင်း မြေပုံ",
     modeAriaLabel: "မြေပုံ ပြသမှု စနစ်",
+
+    basemapAriaLabel: "မြေပုံ နောက်ခံ",
+    basemapMono: "အဖြူအမည်း",
+    basemapColor: "အရောင်",
+    basemapGsi: "GSI",
 
     panelLeftAriaLabel: "အညွှန်းကိန်း ရွေးချယ်မှုနှင့် မြို့နယ်အလိုက် အခြေအနေ",
     panelToggleRanking: "အညွှန်းကိန်း・မြို့နယ်",
