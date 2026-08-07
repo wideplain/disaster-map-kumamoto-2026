@@ -159,7 +159,10 @@
   </div>
   <div class="timeline-controls">
     <button class="tl-btn" id="btn-prev" data-i18n-aria="tlPrevAriaLabel" data-i18n-title="tlPrevTitle" aria-label="前の時点へ" title="前へ（←）">&lt;</button>
-    <button class="tl-btn play" id="btn-play" data-i18n-aria="tlPlayAriaLabel" data-i18n-title="tlPlayAriaLabel" aria-label="自動再生" title="自動再生">再生 ▶</button>
+    <!-- ラベルとアイコンを別要素にしておく（狭い画面ではCSSでラベルだけ隠し、
+         アイコンだけの丸ボタンにする）。aria-label/title は syncPlayButton() が
+         再生/一時停止の状態に合わせて書き換えるので data-i18n-* は付けない -->
+    <button class="tl-btn play" id="btn-play" aria-label="自動再生" title="自動再生"><span class="tl-btn-label">再生</span><span class="tl-btn-icon" aria-hidden="true">▶</span></button>
     <button class="tl-btn" id="btn-next" data-i18n-aria="tlNextAriaLabel" data-i18n-title="tlNextTitle" aria-label="次の時点へ" title="次へ（→）">&gt;</button>
     <div class="slider-area">
       <input type="range" id="slider" min="0" max="0" step="1" value="0" data-i18n-aria="tlSliderAriaLabel" aria-label="時点を選択">

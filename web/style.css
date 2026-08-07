@@ -996,10 +996,14 @@ button, select, input {
 
 /* 密集でラベルを隠したときのズーム促しピル。凡例(z-index:7)と同層で
    地図下部中央に置く（凡例=左下、タイムラインバー=地図の外なので干渉しない） */
+/* bottomは権利表示（attributionコントロール）の帯を避けた位置にする。
+   OpenFreeMapの権利表示は地理院タイルより長く、狭い画面では2行(約44px)に
+   折り返して画面下端いっぱいを占める。10pxだとその上に重なってしまい、
+   「権利表示は常に完全に読める」という前提を崩す */
 .label-hint {
   position: absolute;
   left: 50%;
-  bottom: 10px;
+  bottom: 64px;
   transform: translateX(-50%);
   max-width: calc(100% - 20px);
   white-space: nowrap;
@@ -1508,6 +1512,15 @@ table.data-table {
   width: 84px;
   font-size: var(--fs-xs);
   font-weight: 700;
+  gap: 4px;
+}
+
+/* アイコンは字形の都合で行の中心からずれやすいので、幅を固定して
+   「ラベルを隠したときにボタンの中心へ来る」ことを保証する */
+.tl-btn-icon {
+  flex: none;
+  font-size: 11px;
+  line-height: 1;
 }
 
 .slider-area {
@@ -1609,7 +1622,12 @@ table.data-table {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 29px;   /* NavigationControlの+/-と同じ大きさに揃える */
+    /* 畳んでいる間は NavigationControl の +/- と同じ大きさ。開いたときは
+       選択肢の幅に合わせて広がるよう、固定幅ではなく stretch にする
+       （.maplibregl-ctrl-group button の width:29px を打ち消す必要がある） */
+    width: auto;
+    min-width: 29px;
+    align-self: stretch;
     height: 29px;
     border: none;
     background: #fff;
@@ -1618,9 +1636,12 @@ table.data-table {
     padding: 0;
   }
 
+  /* 開いていることは分かるが、選択中(aria-pressed=true の反転)より弱く見せる。
+     同じ反転にすると「アイコン行も選択肢のひとつ」に見えてしまう */
   .basemap-switch.is-open .basemap-toggle {
-    background: var(--ink);
-    color: #fff;
+    background: var(--surface);
+    color: var(--ink);
+    border-bottom: 1px solid var(--line);
   }
 
   .basemap-switch .basemap-options {
@@ -1629,10 +1650,25 @@ table.data-table {
 
   .basemap-switch.is-open .basemap-options {
     display: flex;
-    border-top: 1px solid var(--line);
   }
 
   .event-meta { display: none; }
+
+  /* 再生ボタンは「再生」「一時停止」の文字を出さずアイコンだけの丸ボタンにする。
+     ▶／❚❚ は意味が自明で、他のtl-btn（< >）と揃うぶん狭い画面ではスライダーに
+     幅を回せる。ラベルは display:none で読み上げからも消えるが、
+     syncPlayButton() が aria-label に同じ意味を持たせているので名前は残る。
+     高さは 44px のまま＝ --bar-h の前提（行の高さ）を変えない */
+  .tl-btn.play {
+    width: 44px;
+    border-radius: 50%;
+    gap: 0;
+  }
+
+  .tl-btn.play .tl-btn-label { display: none; }
+
+  /* 文字と並べる前提で小さくしていたが、単独になるぶん見やすさを戻す */
+  .tl-btn.play .tl-btn-icon { font-size: 13px; }
 
   /* 幅が狭い分だけフォントサイズを落とす。折り返しはflex-wrap:nowrap+
      ellipsisで既に禁止されているので、ここでは行数・高さに影響しない */

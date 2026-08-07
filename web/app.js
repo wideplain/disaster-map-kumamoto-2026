@@ -1740,7 +1740,6 @@ function togglePlay() {
   }
   if (state.snapshotIndex >= data.snapshots.length - 1) setSnapshotIndex(0);
   trackEvent("play_timeline", {});
-  document.getElementById("btn-play").textContent = I18N.t("tlPause");
   state.playTimer = setInterval(() => {
     if (state.snapshotIndex >= data.snapshots.length - 1) {
       stopPlay();
@@ -1748,6 +1747,7 @@ function togglePlay() {
     }
     nextSnapshot();
   }, 1200);
+  syncPlayButton(); // playTimerを立てた後に呼ぶ（表示は state.playTimer から導く）
 }
 
 function stopPlay() {
@@ -1756,8 +1756,24 @@ function stopPlay() {
     clearInterval(state.playTimer);
     state.playTimer = null;
   }
-  document.getElementById("btn-play").textContent = I18N.t("tlPlay");
+  syncPlayButton();
   if (wasPlaying) syncHashFromState(); // 自動再生が止まったタイミングで一度だけ反映
+}
+
+// 再生ボタンの表示を state.playTimer に合わせる。狭い画面ではラベルがCSSで
+// 隠れてアイコンだけになるため、読み上げ用の名前は textContent ではなく
+// aria-label が担う。再生中は「一時停止」を指すよう毎回書き換える
+function syncPlayButton() {
+  const btn = document.getElementById("btn-play");
+  if (!btn) return;
+  const playing = !!state.playTimer;
+  const label = btn.querySelector(".tl-btn-label");
+  const icon = btn.querySelector(".tl-btn-icon");
+  if (label) label.textContent = I18N.t(playing ? "tlPause" : "tlPlay");
+  if (icon) icon.textContent = playing ? "❚❚" : "▶";
+  const name = playing ? I18N.t("tlPause") : I18N.t("tlPlayAriaLabel");
+  btn.setAttribute("aria-label", name);
+  btn.title = name;
 }
 
 /* ===========================================================
@@ -2004,8 +2020,7 @@ function applyI18nAttributes() {
   });
   const ep = document.querySelector(".epicenter-label");
   if (ep) ep.textContent = I18N.t("epicenterLabel");
-  const play = document.getElementById("btn-play");
-  if (play) play.textContent = I18N.t(state.playTimer ? "tlPause" : "tlPlay");
+  syncPlayButton();
 }
 
 // ハンバーガーメニュー: テキスト版データ一覧+11言語リンクをまとめたnav。
