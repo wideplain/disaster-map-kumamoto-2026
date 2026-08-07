@@ -229,6 +229,8 @@ const STRINGS = {
     infoCreditPrefix: "出典: 熊本県 災害対策本部会議資料／内閣府 防災情報 被害状況等報告／",
     infoCreditGsiLinkText: "地理院タイル（国土地理院）",
     infoOpenSourcePrefix: "本サイトはオープンソースです:",
+    relatedSitesHeading: "関連サイト",
+    siteLinkNoto: "令和6年能登半島地震 被害状況マップ",
     infoGithubLinkText: "GitHub（wideplain/disaster-map-kumamoto-2026）",
     infoAnalytics: "本サイトは利用状況の把握のため Google アナリティクスを使用しています。",
 
@@ -355,6 +357,8 @@ const STRINGS = {
     infoCreditPrefix: "しりょう: 熊本県の かいぎの しりょう／国の ぼうさい じょうほう／",
     infoCreditGsiLinkText: "国土地理院の 地図",
     infoOpenSourcePrefix: "この サイトの プログラムは だれでも 見られます:",
+    relatedSitesHeading: "ほかの 地しんの マップ",
+    siteLinkNoto: "能登の地しん　ひがいマップ",
     infoGithubLinkText: "GitHub（wideplain/disaster-map-kumamoto-2026）",
     infoAnalytics: "この サイトは Google アナリティクスを つかって います。",
 
@@ -480,6 +484,8 @@ const STRINGS = {
     infoCreditPrefix: "Sources: Kumamoto Prefecture Disaster Response Headquarters meeting materials / Cabinet Office disaster damage reports / ",
     infoCreditGsiLinkText: "GSI Tiles (Geospatial Information Authority of Japan)",
     infoOpenSourcePrefix: "This site is open source:",
+    relatedSitesHeading: "Related site",
+    siteLinkNoto: "2024 Noto Peninsula Earthquake Damage Map",
     infoGithubLinkText: "GitHub (wideplain/disaster-map-kumamoto-2026)",
     infoAnalytics: "This site uses Google Analytics to understand how it is used.",
 
@@ -605,6 +611,8 @@ const STRINGS = {
     infoCreditPrefix: "来源：熊本县灾害对策本部会议资料／内阁府防灾信息 受灾情况报告／",
     infoCreditGsiLinkText: "地理院地图瓦片（国土地理院）",
     infoOpenSourcePrefix: "本网站为开源项目：",
+    relatedSitesHeading: "相关网站",
+    siteLinkNoto: "令和6年能登半岛地震 灾情地图",
     infoGithubLinkText: "GitHub（wideplain/disaster-map-kumamoto-2026）",
     infoAnalytics: "本网站使用 Google Analytics（谷歌分析）以了解使用情况。",
 
@@ -730,6 +738,8 @@ const STRINGS = {
     infoCreditPrefix: "Nguồn: Tài liệu họp Sở chỉ huy ứng phó thảm họa tỉnh Kumamoto / Báo cáo thiệt hại Văn phòng Nội các / ",
     infoCreditGsiLinkText: "Bản đồ nền GSI (Viện Thông tin Địa không gian Nhật Bản)",
     infoOpenSourcePrefix: "Trang này là mã nguồn mở:",
+    relatedSitesHeading: "Trang liên quan",
+    siteLinkNoto: "Bản đồ thiệt hại động đất bán đảo Noto 2024",
     infoGithubLinkText: "GitHub (wideplain/disaster-map-kumamoto-2026)",
     infoAnalytics: "Trang này dùng Google Analytics để nắm tình hình sử dụng.",
 
@@ -855,6 +865,8 @@ const STRINGS = {
     infoCreditPrefix: "출처: 구마모토현 재해대책본부 회의자료 / 내각부 방재정보 피해상황 보고 / ",
     infoCreditGsiLinkText: "국토지리원 지도 타일（국토지리원）",
     infoOpenSourcePrefix: "이 사이트는 오픈소스입니다:",
+    relatedSitesHeading: "관련 사이트",
+    siteLinkNoto: "레이와 6년 노토반도 지진 피해 지도",
     infoGithubLinkText: "GitHub（wideplain/disaster-map-kumamoto-2026）",
     infoAnalytics: "이 사이트는 이용 현황 파악을 위해 Google 애널리틱스를 사용합니다.",
 
@@ -980,6 +992,8 @@ const STRINGS = {
     infoCreditPrefix: "Pinagmulan: Materyales ng pulong ng Disaster Response Headquarters ng Kumamoto Prefecture / Ulat ng pinsala ng Cabinet Office / ",
     infoCreditGsiLinkText: "GSI Tiles (Geospatial Information Authority of Japan)",
     infoOpenSourcePrefix: "Open source ang site na ito:",
+    relatedSitesHeading: "Kaugnay na site",
+    siteLinkNoto: "Mapa ng Pinsala sa Lindol sa Noto Peninsula 2024",
     infoGithubLinkText: "GitHub (wideplain/disaster-map-kumamoto-2026)",
     infoAnalytics: "Gumagamit ang site na ito ng Google Analytics para malaman kung paano ito ginagamit.",
 
@@ -1105,6 +1119,8 @@ const STRINGS = {
     infoCreditPrefix: "स्रोत: कुमामोतो प्रान्त विपद् प्रतिकार्य मुख्यालय बैठक सामग्री／नाइकाकुफु विपद् जानकारी क्षति प्रतिवेदन／",
     infoCreditGsiLinkText: "जीएसआई टाइल (राष्ट्रिय भू-स्थानिक सूचना संस्थान)",
     infoOpenSourcePrefix: "यो साइट खुला स्रोत हो:",
+    relatedSitesHeading: "सम्बन्धित साइट",
+    siteLinkNoto: "नोतो प्रायद्वीप भूकम्प २०२४ क्षति नक्सा",
     infoGithubLinkText: "GitHub（wideplain/disaster-map-kumamoto-2026）",
     infoAnalytics: "यो साइटले प्रयोगको अवस्था बुझ्न Google Analytics प्रयोग गर्छ।",
 
@@ -1230,6 +1246,8 @@ const STRINGS = {
     infoCreditPrefix: "Fontes: materiais de reunião da Sede de Resposta a Desastres da Província de Kumamoto / relatórios de danos do Gabinete do Governo / ",
     infoCreditGsiLinkText: "Mapas GSI (Instituto Geoespacial do Japão)",
     infoOpenSourcePrefix: "Este site é de código aberto:",
+    relatedSitesHeading: "Site relacionado",
+    siteLinkNoto: "Mapa de Danos do Terremoto da Península de Noto 2024",
     infoGithubLinkText: "GitHub (wideplain/disaster-map-kumamoto-2026)",
     infoAnalytics: "Este site usa o Google Analytics para entender como é utilizado.",
 
@@ -1355,6 +1373,8 @@ const STRINGS = {
     infoCreditPrefix: "Sumber: materi rapat Markas Tanggap Bencana Prefektur Kumamoto / laporan kerusakan Kantor Kabinet / ",
     infoCreditGsiLinkText: "Peta GSI (Badan Informasi Geospasial Jepang)",
     infoOpenSourcePrefix: "Situs ini bersifat open source:",
+    relatedSitesHeading: "Situs terkait",
+    siteLinkNoto: "Peta Kerusakan Gempa Semenanjung Noto 2024",
     infoGithubLinkText: "GitHub (wideplain/disaster-map-kumamoto-2026)",
     infoAnalytics: "Situs ini menggunakan Google Analytics untuk memahami cara penggunaannya.",
 
@@ -1480,6 +1500,8 @@ const STRINGS = {
     infoCreditPrefix: "ရင်းမြစ်: ကုမမိုတို ပြည်နယ် ဘေးအန္တရာယ် တုံ့ပြန်မှု ဌာနချုပ် အစည်းအဝေး စာရွက်စာတမ်း／ကက်ဘိနက်ရုံး ဘေးအန္တရာယ် သတင်းအချက်အလက် ပျက်စီးမှု အစီရင်ခံစာ／",
     infoCreditGsiLinkText: "GSI မြေပုံ (ဂျပန် ပထဝီအချက်အလက် အာဏာပိုင်ဌာန)",
     infoOpenSourcePrefix: "ဤဆိုက်သည် open source ဖြစ်သည်:",
+    relatedSitesHeading: "ဆက်စပ် ဆိုက်",
+    siteLinkNoto: "နိုတိုကျွန်းဆွယ် ငလျင် ၂၀၂၄ ပျက်စီးမှု မြေပုံ",
     infoGithubLinkText: "GitHub（wideplain/disaster-map-kumamoto-2026）",
     infoAnalytics: "ဤဆိုက်သည် အသုံးပြုမှု အခြေအနေကို သိရှိရန် Google Analytics ကို အသုံးပြုသည်။",
 

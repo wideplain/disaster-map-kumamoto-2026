@@ -1585,3 +1585,25 @@ table.data-table {
   font-size: 15px;
   line-height: 1.7;
 }
+
+/* 姉妹サイト(もう一方の災害マップ)へのリンク。言語リストの下に区切って置く */
+.menu-related {
+  border-top: 1px solid var(--line);
+  margin-top: 6px;
+  padding-top: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.menu-related-heading {
+  padding: 2px 8px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+}
+.menu-related a {
+  padding: 8px;
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  text-decoration: none;
+  border-radius: 6px;
+}
+.menu-related a:hover { background: #f4f3f0; }

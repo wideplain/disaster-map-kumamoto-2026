@@ -1809,6 +1809,10 @@ function buildLangSwitchUI() {
     });
   });
 
+  document.querySelectorAll("#menu-related-link, #info-related-link").forEach((a) => {
+    a.addEventListener("click", () => trackEvent("click_related_site", { to: "noto" }));
+  });
+
   const menuDataLink = document.getElementById("menu-data-link");
   if (menuDataLink) {
     menuDataLink.addEventListener("click", () => trackEvent("click_data_page", { placement: "menu" }));

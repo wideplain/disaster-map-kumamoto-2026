@@ -374,6 +374,13 @@ const DATA_PAGE_LINK_ANCHOR =
 // ヘッダーのハンバーガーメニュー内、テキスト版データへのリンク(#data-page-link と同じ要領で言語別にhref/テキストを差し替える)
 const MENU_DATA_LINK_ANCHOR =
   '<a href="data.html" id="menu-data-link" class="menu-data-link" data-i18n="dataPageLinkText">テキスト版データ一覧（全市町村・全指標）</a>';
+// 姉妹サイトへのリンク。メニューと出典・注記の2箇所にあり、文言だけ言語別に差し替える
+const RELATED_HEADINGS = ['<span class="menu-related-heading" data-i18n="relatedSitesHeading">関連サイト</span>',
+  '<span data-i18n="relatedSitesHeading">関連サイト</span>'];
+const RELATED_LINKS = [
+  '<a href="https://noto-disaster-map-2024.wideplain.com/" id="menu-related-link" rel="noopener" data-i18n="siteLinkNoto">令和6年能登半島地震 被害状況マップ</a>',
+  '<a href="https://noto-disaster-map-2024.wideplain.com/" id="info-related-link" rel="noopener" data-i18n="siteLinkNoto">令和6年能登半島地震 被害状況マップ</a>'];
+
 const STATIC_NAV_DATA_ANCHOR = '<a href="data.html">テキスト版データ一覧（全市町村・全指標）</a>';
 // noscript内の<p>は日本語の地の文にリンクが埋め込まれた1文なので、段落全体を
 // noscriptNote({link: ...})の翻訳文へ丸ごと差し替える(単純なアンカー差し替えでは
@@ -396,6 +403,8 @@ assertOnce(INDEX_TEMPLATE, NOSCRIPT_P_RE, "noscript paragraph");
 assertCount(INDEX_TEMPLATE, /data-lang="[^"]+"/g, "menu-langs data-lang attrs", 11);
 // noscript内にのみ残るテキスト版データへのプレーンな<a>(idなし)
 assertCount(INDEX_TEMPLATE, STATIC_NAV_DATA_ANCHOR, "static data.html anchor(noscript)", 1);
+RELATED_HEADINGS.forEach((h, i) => assertOnce(INDEX_TEMPLATE, h, `related heading ${i}`));
+RELATED_LINKS.forEach((a, i) => assertOnce(INDEX_TEMPLATE, a, `related link ${i}`));
 
 function generateIndexHtml(lang) {
   I18N.setLang(lang.code, { persist: false });
@@ -427,6 +436,15 @@ function generateIndexHtml(lang) {
     MENU_DATA_LINK_ANCHOR,
     `<a href="${dataHref}" id="menu-data-link" class="menu-data-link" data-i18n="dataPageLinkText">${dataLinkText}</a>`
   );
+
+  const relatedText = escapeHtml(I18N.t("siteLinkNoto"));
+  const headingText = escapeHtml(I18N.t("relatedSitesHeading"));
+  RELATED_HEADINGS.forEach((h) => {
+    html = html.replace(h, h.replace(">関連サイト<", `>${headingText}<`));
+  });
+  RELATED_LINKS.forEach((a) => {
+    html = html.replace(a, a.replace(">令和6年能登半島地震 被害状況マップ<", `>${relatedText}<`));
+  });
 
   html = html.replace(H1_APP_TITLE, `<h1 data-i18n="appTitle">${escapeHtml(I18N.t("appTitle"))}</h1>`);
 
@@ -617,6 +635,7 @@ ${buildSourceLinks(lang)}
     I18N.t("infoGithubLinkText")
   )}</a></p>
 
+<p>${escapeHtml(I18N.t("relatedSitesHeading"))}: <a href="https://noto-disaster-map-2024.wideplain.com/${lang.dir ? lang.dir + "/" : ""}data.html" rel="noopener">${escapeHtml(I18N.t("siteLinkNoto"))}</a></p>
 <footer><a href="${backHref}">${escapeHtml(I18N.t("tableClose"))}</a></footer>
 </body>
 </html>

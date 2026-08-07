@@ -38,7 +38,7 @@
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
   integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous">
 <!-- ?v= はキャッシュバスター。app.js/i18n.js/style.css を変えたら3つとも同じ値で上げる -->
-<link rel="stylesheet" href="style.css?v=20260806f">
+<link rel="stylesheet" href="style.css?v=20260807a">
 </head>
 <body>
 
@@ -64,6 +64,10 @@
     <a href="pt-br/" data-lang="pt-BR" hreflang="pt-BR" lang="pt-BR">Português</a>
     <a href="id/" data-lang="id" hreflang="id" lang="id">Bahasa Indonesia</a>
     <a href="my/" data-lang="my" hreflang="my" lang="my">မြန်မာ</a>
+  </div>
+  <div class="menu-related">
+    <span class="menu-related-heading" data-i18n="relatedSitesHeading">関連サイト</span>
+    <a href="https://noto-disaster-map-2024.wideplain.com/" id="menu-related-link" rel="noopener" data-i18n="siteLinkNoto">令和6年能登半島地震 被害状況マップ</a>
   </div>
 </nav>
 
@@ -175,6 +179,10 @@
     <span data-i18n="infoOpenSourcePrefix">本サイトはオープンソースです:</span>
     <a href="https://github.com/wideplain/disaster-map-kumamoto-2026" target="_blank" rel="noopener" data-i18n="infoGithubLinkText">GitHub（wideplain/disaster-map-kumamoto-2026）</a>
   </p>
+  <p class="info-credit">
+    <span data-i18n="relatedSitesHeading">関連サイト</span>:
+    <a href="https://noto-disaster-map-2024.wideplain.com/" id="info-related-link" rel="noopener" data-i18n="siteLinkNoto">令和6年能登半島地震 被害状況マップ</a>
+  </p>
   <p class="info-credit" data-i18n="infoAnalytics">
     本サイトは利用状況の把握のため Google アナリティクスを使用しています。
   </p>
@@ -194,9 +202,9 @@
 </noscript>
 <!-- /BUILD:STATIC -->
 
-<script src="i18n.js?v=20260806f"></script>
+<script src="i18n.js?v=20260807a"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"
   integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
-<script src="app.js?v=20260806f"></script>
+<script src="app.js?v=20260807a"></script>
 </body>
 </html>
