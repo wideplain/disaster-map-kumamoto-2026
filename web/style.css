@@ -204,6 +204,16 @@ button, select, input {
 
 .site-menu[hidden] { display: none; }
 
+/* メニュー先頭の「データ更新: ...時点」。リンクではない情報行なので
+   hoverを持たせず、控えめな色で他の項目と区別する */
+.menu-updated {
+  margin: 0;
+  padding: 8px 8px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+}
+
 .menu-data-link {
   display: block;
   padding: 10px 8px;

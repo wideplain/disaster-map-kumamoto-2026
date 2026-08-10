@@ -167,6 +167,7 @@ const STRINGS = {
     langSwitchAriaLabel: "言語 / Language",
     menuButtonAriaLabel: "メニュー",
     menuAriaLabel: "メニュー",
+    menuUpdatedLabel: "データ更新:",
 
     modeMetric: "数値マップ",
     modeNews: "ニュースマップ",
@@ -300,6 +301,7 @@ const STRINGS = {
     langSwitchAriaLabel: "ことば / Language",
     menuButtonAriaLabel: "メニュー",
     menuAriaLabel: "メニュー",
+    menuUpdatedLabel: "いつの データ:",
 
     modeMetric: "かずで見る",
     modeNews: "ニュースで見る",
@@ -432,6 +434,7 @@ const STRINGS = {
     langSwitchAriaLabel: "Language",
     menuButtonAriaLabel: "Menu",
     menuAriaLabel: "Menu",
+    menuUpdatedLabel: "Map data:",
 
     modeMetric: "Data map",
     modeNews: "News map",
@@ -564,6 +567,7 @@ const STRINGS = {
     langSwitchAriaLabel: "语言",
     menuButtonAriaLabel: "菜单",
     menuAriaLabel: "菜单",
+    menuUpdatedLabel: "数据更新:",
 
     modeMetric: "数据地图",
     modeNews: "新闻地图",
@@ -696,6 +700,7 @@ const STRINGS = {
     langSwitchAriaLabel: "Ngôn ngữ",
     menuButtonAriaLabel: "Menu",
     menuAriaLabel: "Menu",
+    menuUpdatedLabel: "Dữ liệu:",
 
     modeMetric: "Bản đồ số liệu",
     modeNews: "Bản đồ tin tức",
@@ -828,6 +833,7 @@ const STRINGS = {
     langSwitchAriaLabel: "언어",
     menuButtonAriaLabel: "메뉴",
     menuAriaLabel: "메뉴",
+    menuUpdatedLabel: "데이터 갱신:",
 
     modeMetric: "수치 지도",
     modeNews: "뉴스 지도",
@@ -960,6 +966,7 @@ const STRINGS = {
     langSwitchAriaLabel: "Wika",
     menuButtonAriaLabel: "Menu",
     menuAriaLabel: "Menu",
+    menuUpdatedLabel: "Datos:",
 
     modeMetric: "Mapa ng datos",
     modeNews: "Mapa ng balita",
@@ -1092,6 +1099,7 @@ const STRINGS = {
     langSwitchAriaLabel: "भाषा",
     menuButtonAriaLabel: "मेनु",
     menuAriaLabel: "मेनु",
+    menuUpdatedLabel: "डाटा:",
 
     modeMetric: "तथ्याङ्क नक्सा",
     modeNews: "समाचार नक्सा",
@@ -1224,6 +1232,7 @@ const STRINGS = {
     langSwitchAriaLabel: "Idioma",
     menuButtonAriaLabel: "Menu",
     menuAriaLabel: "Menu",
+    menuUpdatedLabel: "Dados:",
 
     modeMetric: "Mapa de dados",
     modeNews: "Mapa de notícias",
@@ -1356,6 +1365,7 @@ const STRINGS = {
     langSwitchAriaLabel: "Bahasa",
     menuButtonAriaLabel: "Menu",
     menuAriaLabel: "Menu",
+    menuUpdatedLabel: "Data:",
 
     modeMetric: "Peta data",
     modeNews: "Peta berita",
@@ -1488,6 +1498,7 @@ const STRINGS = {
     langSwitchAriaLabel: "ဘာသာစကား",
     menuButtonAriaLabel: "မီနူး",
     menuAriaLabel: "မီနူး",
+    menuUpdatedLabel: "ဒေတာ:",
 
     modeMetric: "ကိန်းဂဏန်း မြေပုံ",
     modeNews: "သတင်း မြေပုံ",

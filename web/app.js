@@ -2106,6 +2106,18 @@ function updateDataPageLinks() {
   });
 }
 
+// メニューの「データ更新: <time>」行。ビルド時に静的に焼き込まれているが、
+// クライアントサイドの言語切替後は日時の言語別表記が変わるため、また
+// 未ビルドのローカル配信(web/直下)ではプレースホルダのままのため、
+// 実データの最新スナップショット日時でここから上書きする
+function updateMenuUpdatedTime() {
+  const el = document.getElementById("menu-updated-time");
+  if (!el || !data) return;
+  const latest = data.snapshots[data.snapshots.length - 1];
+  el.dateTime = latest.datetime;
+  el.textContent = I18N.formatDateTime(latest.datetime);
+}
+
 /* ===========================================================
    URL同期: 言語切替時のパス書き換え
 
@@ -2166,6 +2178,7 @@ function syncUrlForLang(code) {
 function onLanguageChanged() {
   updateMenuLangCurrent();
   applyI18nAttributes();
+  updateMenuUpdatedTime();
   buildModeSwitchUI();
   buildMetricSwitchUI();
   buildNewsFilterChips();
@@ -2408,6 +2421,7 @@ async function boot() {
   sliderEl.value = String(state.snapshotIndex);
 
   buildEventMeta();
+  updateMenuUpdatedTime();
   buildModeSwitchUI();
   buildMetricSwitchUI();
   buildNewsFilterChips();

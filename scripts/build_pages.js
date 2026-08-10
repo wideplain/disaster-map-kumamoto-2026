@@ -371,6 +371,10 @@ const STATIC_OPEN_RE = /<!--\s*BUILD:STATIC[\s\S]*?-->/;
 const H1_APP_TITLE = '<h1 data-i18n="appTitle">令和8年熊本地震 被害状況マップ</h1>';
 const DATA_PAGE_LINK_ANCHOR =
   '<a href="data.html" id="data-page-link" data-i18n="dataPageLinkText">テキスト版データ一覧（全市町村・全指標）</a>';
+// メニュー先頭の「データ更新: <time>」行。最新スナップショット日時を言語別表記で
+// 静的に焼き込む(SEO・JS無効時の鮮度表示。テンプレート側はプレースホルダ)
+const MENU_UPDATED_LINE =
+  '<p class="menu-updated"><span data-i18n="menuUpdatedLabel">データ更新:</span> <time id="menu-updated-time" datetime="">-</time></p>';
 // ヘッダーのハンバーガーメニュー内、テキスト版データへのリンク(#data-page-link と同じ要領で言語別にhref/テキストを差し替える)
 const MENU_DATA_LINK_ANCHOR =
   '<a href="data.html" id="menu-data-link" class="menu-data-link" data-i18n="dataPageLinkText">テキスト版データ一覧（全市町村・全指標）</a>';
@@ -397,6 +401,7 @@ assertOnce(INDEX_TEMPLATE, '<html lang="ja">', "html lang");
 assertOnce(INDEX_TEMPLATE, H1_APP_TITLE, "h1 appTitle");
 assertOnce(INDEX_TEMPLATE, DATA_PAGE_LINK_ANCHOR, "data-page-link anchor");
 assertOnce(INDEX_TEMPLATE, MENU_DATA_LINK_ANCHOR, "menu-data-link anchor");
+assertOnce(INDEX_TEMPLATE, MENU_UPDATED_LINE, "menu-updated line");
 assertOnce(INDEX_TEMPLATE, NOSCRIPT_P_RE, "noscript paragraph");
 // 言語間リンク(#site-menu .menu-langs)。base解決で全ページ共通のためhref差し替えは不要だが、
 // data-lang の11言語ぶんがテンプレートに揃っていることだけ検査する
@@ -435,6 +440,13 @@ function generateIndexHtml(lang) {
   html = html.replace(
     MENU_DATA_LINK_ANCHOR,
     `<a href="${dataHref}" id="menu-data-link" class="menu-data-link" data-i18n="dataPageLinkText">${dataLinkText}</a>`
+  );
+
+  html = html.replace(
+    MENU_UPDATED_LINE,
+    `<p class="menu-updated"><span data-i18n="menuUpdatedLabel">${escapeHtml(I18N.t("menuUpdatedLabel"))}</span> ` +
+      `<time id="menu-updated-time" datetime="${latestSnapshot.datetime}">` +
+      `${escapeHtml(I18N.formatDateTimeForLang(latestSnapshot.datetime, lang.code))}</time></p>`
   );
 
   const relatedText = escapeHtml(I18N.t("siteLinkNoto"));
@@ -780,6 +792,20 @@ function checkHtmlFile(file) {
       const target = path.join(SITE_DIR, menuLinkMatch[1]);
       if (!fs.existsSync(target)) {
         errors.push(`${label}: menu-data-link の href 先が _site 内に存在しない (${menuLinkMatch[1]})`);
+      }
+    }
+
+    // メニューの「データ更新」行が最新スナップショット日時で焼き込まれているか
+    // (プレースホルダ「-」のままの公開を防ぐ)
+    const updatedMatch = html.match(/<time id="menu-updated-time" datetime="([^"]*)">([^<]*)<\/time>/);
+    if (!updatedMatch) {
+      errors.push(`${label}: menu-updated-time 要素が見つからない`);
+    } else {
+      if (updatedMatch[1] !== latestSnapshot.datetime) {
+        errors.push(`${label}: menu-updated-time のdatetimeが最新スナップショットと不一致 (実際: ${updatedMatch[1]} / 期待: ${latestSnapshot.datetime})`);
+      }
+      if (!updatedMatch[2].trim() || updatedMatch[2].trim() === "-") {
+        errors.push(`${label}: menu-updated-time の表示文字列がプレースホルダのまま`);
       }
     }
 
