@@ -24,6 +24,16 @@ const SITE_PUBLISHED_DATE = "2026-08-05";
 const I18N = require(path.join(WEB_DIR, "i18n.js"));
 const timeline = JSON.parse(fs.readFileSync(path.join(WEB_DIR, "data", "timeline.json"), "utf8"));
 const muniData = JSON.parse(fs.readFileSync(path.join(WEB_DIR, "data", "municipalities.json"), "utf8"));
+// 支援拠点は生成されていないことがある（parse_support.py 未実行）。無ければ節ごと出さない
+const supportPath = path.join(WEB_DIR, "data", "support.json");
+const supportData = fs.existsSync(supportPath) ? JSON.parse(fs.readFileSync(supportPath, "utf8")) : null;
+const SUPPORT_TYPE_LABEL_KEYS = {
+  bath: "supportTypeBath",
+  well: "supportTypeWell",
+  housing: "supportTypeHousing",
+  ferry: "supportTypeFerry",
+  pet: "supportTypePet",
+};
 
 const snapshots = timeline.snapshots;
 const latestSnapshot = snapshots[snapshots.length - 1];
@@ -87,6 +97,8 @@ const METRICS = [
     get: (m) => (m ? numOrNull(m.water_stations) : null) },
   { key: "power_outage", labelKey: "metricPowerOutageLabel", unitKey: "metricPowerOutageUnit",
     get: (m) => (m ? numOrNull(m.power_outage) : null) },
+  { key: "housing_started", labelKey: "metricHousingStartedLabel", unitKey: "metricHousingStartedUnit",
+    get: (m) => (m ? numOrNull(m.housing_started) : null) },
 ];
 const TIMESERIES_METRIC_KEYS = ["evacuees", "shelters", "deaths", "injured", "houses", "water_outage"];
 
@@ -607,6 +619,68 @@ function buildTimeseriesTable(lang) {
   return html;
 }
 
+// 出典の「〜時点」は日付だけ/時刻つきが混在する（app.js の formatSupportAsOf と同じ整形）
+function formatSupportAsOf(value, langCode) {
+  const m = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+  if (!m) return String(value || "");
+  const isJa = langCode === "ja" || langCode === "easy-ja";
+  const date = isJa ? `${+m[2]}月${+m[3]}日` : `${m[1]}/${m[2]}/${m[3]}`;
+  return m[4] ? `${date} ${m[4]}:${m[5]}` : date;
+}
+
+// 支援拠点一覧（時点に連動しない最新情報）。JS無効でも読める素の表にする
+function buildSupportTable(lang) {
+  if (!supportData || !supportData.sites.length) return "";
+  I18N.setLang(lang.code, { persist: false });
+  const cols = [
+    ["supportColType", (s) => I18N.t(SUPPORT_TYPE_LABEL_KEYS[s.type] || s.type)],
+    ["supportColName", (s) => s.name],
+    ["tableColMuni", (s) => I18N.muniName(s.muni, lang.code)],
+    ["supportFieldAddress", (s) => s.address || ""],
+    ["supportFieldTel", (s) => s.tel || ""],
+    ["supportFieldHours", (s) => s.hours || ""],
+    ["supportFieldClosed", (s) => s.closed || ""],
+    ["supportFieldNote", (s) => s.note || ""],
+  ];
+  const order = Object.keys(SUPPORT_TYPE_LABEL_KEYS);
+  const sites = [...supportData.sites].sort((a, b) => {
+    const d = order.indexOf(a.type) - order.indexOf(b.type);
+    if (d !== 0) return d;
+    const m = String(a.muni).localeCompare(String(b.muni), "ja");
+    return m !== 0 ? m : String(a.name).localeCompare(String(b.name), "ja");
+  });
+
+  let html = `<h2>${escapeHtml(I18N.t("dataSupportHeading"))}</h2>`;
+  html += `<p>${escapeHtml(I18N.t("supportTimelessNote"))} ${escapeHtml(I18N.t("supportAccuracyNote"))}</p>`;
+  html += '<div class="table-scroll"><table><thead><tr>';
+  cols.forEach(([key]) => {
+    html += `<th scope="col">${escapeHtml(I18N.t(key))}</th>`;
+  });
+  html += "</tr></thead><tbody>";
+  sites.forEach((site) => {
+    html += "<tr>";
+    cols.forEach(([, get], i) => {
+      const v = get(site) || "";
+      const cell = v === "" ? `<td class="nodata">${escapeHtml(I18N.t("valDash"))}</td>` : `<td>${escapeHtml(v)}</td>`;
+      html += i === 1 ? `<th scope="row">${escapeHtml(v)}</th>` : cell;
+    });
+    html += "</tr>";
+  });
+  html += "</tbody></table></div>";
+
+  const srcLinks = Object.keys(supportData.sources || {})
+    .map((k) => supportData.sources[k])
+    .filter((src) => src && src.url)
+    .map(
+      (src) =>
+        `<a href="${escapeHtml(src.url)}" target="_blank" rel="noopener">${escapeHtml(src.name)}</a>${
+          src.as_of ? escapeHtml(I18N.t("supportAsOfTemplate", { date: formatSupportAsOf(src.as_of, lang.code) })) : ""
+        }`
+    );
+  if (srcLinks.length) html += `<p>${escapeHtml(I18N.t("sourcePrefix"))}${srcLinks.join("、")}</p>`;
+  return html;
+}
+
 // app.js の出典表示(sourcePrefix + リンクを「、」区切りで並べる)と同じ組み方にする
 function buildSourceLinks(lang) {
   I18N.setLang(lang.code, { persist: false });
@@ -640,6 +714,8 @@ ${buildPrefSummaryTable(lang)}
 ${buildMuniTable(lang)}
 
 ${buildTimeseriesTable(lang)}
+
+${buildSupportTable(lang)}
 
 <h2>${escapeHtml(I18N.t("tlInfoToggle"))}</h2>
 ${buildSourceLinks(lang)}

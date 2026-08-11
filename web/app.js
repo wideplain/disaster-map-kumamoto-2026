@@ -43,6 +43,10 @@ const METRICS = [
     get: (m) => (m ? numOrNull(m.water_stations) : null) },
   { key: "power_outage", labelKey: "metricPowerOutageLabel", unitKey: "metricPowerOutageUnit", color: "#eda100",
     get: (m) => (m ? numOrNull(m.power_outage) : null) },
+  // 出典が県の別ページ（建設型応急住宅の進捗状況）で、団地ごとの着手日から
+  // 各時点の着工済み戸数を build_timeline.py が組み立てている
+  { key: "housing_started", labelKey: "metricHousingStartedLabel", unitKey: "metricHousingStartedUnit", color: "#7a5cc4",
+    get: (m) => (m ? numOrNull(m.housing_started) : null) },
 ];
 
 function metricByKey(key) {
@@ -227,10 +231,11 @@ let attributionCtrl = null; // ベースマップ切替のたびに作り直す
 let muniData = null;
 let data = null;
 let newsData = null; // 読み込み失敗時もnullのまま許容し、数値マップ側には一切影響させない
+let supportData = null; // 同上（支援拠点マップ）
 
 const state = {
   basemap: readInitialBasemap(), // "mono" | "color" | "gsi"
-  mapMode: "metric", // "metric" | "news" — 指標選択(metric)とは独立した状態
+  mapMode: "metric", // "metric" | "news" | "support" — 指標選択(metric)とは独立した状態
   metric: "evacuees",
   snapshotIndex: 0,
   selected: null,
@@ -240,6 +245,9 @@ const state = {
   allCircles: [],
   newsActiveCategories: null, // Set。newsData読み込み後に全カテゴリで初期化
   newsMarkers: [],
+  supportActiveTypes: null, // Set。supportData読み込み後に全種別で初期化
+  supportMarkers: [],
+  selectedSite: null, // 支援拠点マップで選択中の拠点ID（市町村選択とは別）
   hoveredMuni: null, // ホバー中はこの市町村の直接ラベルを一時的に隠す（バルーンとの二重表示回避）
 };
 
@@ -472,8 +480,10 @@ function updateLayerVisibilityForMode() {
   }
   const overlayLabelsEl = document.getElementById("overlay-labels");
   const newsOverlayEl = document.getElementById("news-overlay");
+  const supportOverlayEl = document.getElementById("support-overlay");
   if (overlayLabelsEl) overlayLabelsEl.style.display = state.mapMode === "metric" ? "" : "none";
   if (newsOverlayEl) newsOverlayEl.style.display = state.mapMode === "news" ? "" : "none";
+  if (supportOverlayEl) supportOverlayEl.style.display = state.mapMode === "support" ? "" : "none";
   const legendEl = document.getElementById("legend");
   if (legendEl) legendEl.style.display = state.mapMode === "metric" ? "" : "none";
   if (state.mapMode !== "metric") updateLabelHint([]);
@@ -526,12 +536,20 @@ function onMapFirstLoad() {
 
   map.on("move", () => {
     if (state.mapMode === "metric") layoutOverlayLabels();
+    else if (state.mapMode === "support") repositionSupportMarkers();
     else repositionNewsMarkers();
   });
 
   // 地図側をタップしたらベースマップの選択肢を畳む（狭い画面で開きっぱなしに
   // ならないように）。コントロールはcanvasの外なので自分のクリックでは発火しない
   map.on("click", () => setBasemapSwitchOpen(false));
+
+  // 共有URL(#site=...)での拠点選択は地図の生成より前に処理されるため、
+  // そのときのflyToは効かない。地図ができた時点で一度だけ寄せ直す
+  if (state.mapMode === "support" && state.selectedSite) {
+    const site = supportSiteById(state.selectedSite);
+    if (site) map.jumpTo({ center: [site.lng, site.lat], zoom: Math.max(map.getZoom(), 11.5) });
+  }
 }
 
 function onStyleLoad() {
@@ -1128,6 +1146,278 @@ function repositionNewsMarkers() {
 }
 
 /* ===========================================================
+   支援拠点マップ
+
+   数値マップ・ニュースマップと違い、時点スライダーには連動しない
+   （県が最新の一覧で上書きする性質の情報なので、常に最新版を出す）。
+   データが無い/読み込めない場合も他モードに影響させない
+   =========================================================== */
+
+const SUPPORT_TYPES = [
+  { key: "bath", labelKey: "supportTypeBath", color: "#e0733d" },
+  { key: "well", labelKey: "supportTypeWell", color: "#2a78d6" },
+  { key: "housing", labelKey: "supportTypeHousing", color: "#7a5cc4" },
+  { key: "ferry", labelKey: "supportTypeFerry", color: "#0f8f8f" },
+  { key: "pet", labelKey: "supportTypePet", color: "#c1497f" },
+];
+
+function supportTypeDef(key) {
+  return SUPPORT_TYPES.find((t) => t.key === key);
+}
+function supportTypeLabel(key) {
+  const def = supportTypeDef(key);
+  return def ? I18N.t(def.labelKey) : key;
+}
+function supportTypeColor(key) {
+  const def = supportTypeDef(key);
+  return def ? def.color : "#888888";
+}
+
+// supportData.types はデータ側の並び。未知の種別が増えても落とさず末尾に出す
+function supportTypesInData() {
+  if (!supportData) return [];
+  const known = SUPPORT_TYPES.map((t) => t.key).filter((k) => supportData.sites.some((s) => s.type === k));
+  const extra = [...new Set(supportData.sites.map((s) => s.type))].filter((k) => !known.includes(k));
+  return known.concat(extra);
+}
+
+function filteredSupportSites() {
+  if (!supportData) return [];
+  return supportData.sites.filter((s) => !state.supportActiveTypes || state.supportActiveTypes.has(s.type));
+}
+
+function supportSiteById(id) {
+  return supportData ? supportData.sites.find((s) => s.id === id) || null : null;
+}
+
+function updateSupportMap(sites) {
+  state.supportMarkers = sites.filter((s) => typeof s.lat === "number" && typeof s.lng === "number");
+  layoutSupportMarkers();
+}
+
+function layoutSupportMarkers() {
+  const el = document.getElementById("support-overlay");
+  if (!el) return;
+  el.innerHTML = "";
+  if (!map) return;
+  state.supportMarkers.forEach((s) => {
+    const p = map.project([s.lng, s.lat]);
+    const div = document.createElement("div");
+    div.className = "support-marker" + (state.selectedSite === s.id ? " is-selected" : "");
+    div.style.left = p.x + "px";
+    div.style.top = p.y + "px";
+    div.dataset.lng = s.lng;
+    div.dataset.lat = s.lat;
+    div.tabIndex = 0;
+    div.setAttribute("role", "button");
+    div.setAttribute(
+      "aria-label",
+      I18N.t("supportMarkerAriaLabelTemplate", { name: s.name, type: supportTypeLabel(s.type) })
+    );
+    div.innerHTML = `<span class="dot" style="background:${supportTypeColor(s.type)}"></span>`;
+    const onActivate = () => selectSupportSite(s.id, "map");
+    div.addEventListener("click", onActivate);
+    div.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onActivate();
+      }
+    });
+    el.appendChild(div);
+  });
+  applyMarkerVisibility(el);
+}
+
+function repositionSupportMarkers() {
+  if (!map) return;
+  const el = document.getElementById("support-overlay");
+  if (!el) return;
+  applyMarkerVisibility(el);
+}
+
+function buildSupportFilterChips() {
+  const el = document.getElementById("support-filter");
+  if (!el || !supportData) return;
+  el.innerHTML = "";
+  supportTypesInData().forEach((type) => {
+    const count = supportData.sites.filter((s) => s.type === type).length;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "news-chip-btn support-chip-btn";
+    btn.dataset.type = type;
+    btn.setAttribute("aria-pressed", state.supportActiveTypes.has(type) ? "true" : "false");
+    btn.innerHTML = `<span class="dot" style="background:${supportTypeColor(type)}"></span>${supportTypeLabel(
+      type
+    )}<span class="chip-count">${formatNumber(count)}</span>`;
+    btn.addEventListener("click", () => {
+      if (state.supportActiveTypes.has(type)) state.supportActiveTypes.delete(type);
+      else state.supportActiveTypes.add(type);
+      trackEvent("filter_support", { type, active: state.supportActiveTypes.has(type) });
+      syncSupportFilterChips();
+      renderAll();
+    });
+    el.appendChild(btn);
+  });
+}
+
+function syncSupportFilterChips() {
+  document.querySelectorAll(".support-chip-btn").forEach((b) => {
+    b.setAttribute("aria-pressed", state.supportActiveTypes.has(b.dataset.type) ? "true" : "false");
+  });
+}
+
+function renderSupportListItem(site) {
+  const li = document.createElement("li");
+  li.className = "support-item" + (state.selectedSite === site.id ? " is-selected" : "");
+  li.tabIndex = 0;
+  li.dataset.id = site.id;
+  const sub = [site.hours, site.period ? I18N.t("supportFieldPeriod") + " " + site.period : ""]
+    .filter(Boolean)
+    .join(" / ");
+  li.innerHTML = `
+    <div class="support-item-head">
+      <span class="support-cat-chip"><span class="dot" style="background:${supportTypeColor(
+        site.type
+      )}"></span>${supportTypeLabel(site.type)}</span>
+      <span class="support-muni">${muniDisplayName(site.muni)}</span>
+    </div>
+    <div class="support-item-name">${site.name}</div>
+    ${sub ? `<div class="support-item-sub">${sub}</div>` : ""}`;
+  const onActivate = () => selectSupportSite(site.id, "list");
+  li.addEventListener("click", onActivate);
+  li.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onActivate();
+    }
+  });
+  return li;
+}
+
+function updateSupportPanel(sites) {
+  const listEl = document.getElementById("support-list");
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  if (!supportData) {
+    listEl.innerHTML = `<li class="news-empty">${I18N.t("supportEmptyNoData")}</li>`;
+    return;
+  }
+  if (!sites.length) {
+    listEl.innerHTML = `<li class="news-empty">${I18N.t("supportEmptyNoMatch")}</li>`;
+    return;
+  }
+  // 施設名・住所は原典の日本語のまま出すため、日本語系以外のUIでは注記を添える
+  if (!isJapaneseTextLang()) {
+    const notice = document.createElement("li");
+    notice.className = "news-empty news-translation-note";
+    notice.textContent = I18N.t("supportOriginalJaNotice");
+    listEl.appendChild(notice);
+  }
+
+  // 種別→市町村の順に並べる（同じ種別の拠点が地域ごとに固まって読める）
+  const order = supportTypesInData();
+  [...sites]
+    .sort((a, b) => {
+      const d = order.indexOf(a.type) - order.indexOf(b.type);
+      if (d !== 0) return d;
+      const m = String(a.muni).localeCompare(String(b.muni), "ja");
+      return m !== 0 ? m : String(a.name).localeCompare(String(b.name), "ja");
+    })
+    .forEach((s) => listEl.appendChild(renderSupportListItem(s)));
+}
+
+function selectSupportSite(id, trigger) {
+  const site = supportSiteById(id);
+  if (!site) return;
+  if (state.selectedSite !== id) trackEvent("select_support_site", { site: id, type: site.type, trigger });
+  state.selectedSite = id;
+  if (map && typeof site.lat === "number") {
+    const center = [site.lng, site.lat];
+    const zoom = Math.max(map.getZoom(), 11.5);
+    if (REDUCED_MOTION) map.jumpTo({ center, zoom });
+    else map.flyTo({ center, zoom, speed: 0.9 });
+  }
+  layoutSupportMarkers();
+  updateSupportListSelection();
+  renderDetail();
+  setPanelOpen("right", true);
+  syncHashFromState();
+}
+
+function updateSupportListSelection() {
+  document.querySelectorAll(".support-item").forEach((li) => {
+    li.classList.toggle("is-selected", li.dataset.id === state.selectedSite);
+  });
+}
+
+// 出典の「〜時点」は日付だけ（2026-08-03）と時刻つき（…T17:00…）が混在する。
+// 言語ごとの言い回しは supportAsOfTemplate 側が持つので、ここは素の日付にする
+function formatSupportAsOf(value) {
+  const m = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+  if (!m) return String(value || "");
+  const date = isJapaneseTextLang() ? `${+m[2]}月${+m[3]}日` : `${m[1]}/${m[2]}/${m[3]}`;
+  return m[4] ? `${date} ${m[4]}:${m[5]}` : date;
+}
+
+function supportSourceOf(site) {
+  return supportData && supportData.sources ? supportData.sources[site.source] || null : null;
+}
+
+function renderSupportDetail() {
+  const contentEl = document.getElementById("detail-content");
+  const site = state.selectedSite ? supportSiteById(state.selectedSite) : null;
+  if (!site) {
+    contentEl.innerHTML = `<div class="detail-empty">${I18N.t("supportDetailPlaceholder")}</div>`;
+    return;
+  }
+  const rows = [
+    [I18N.t("supportFieldMuni"), muniDisplayName(site.muni)],
+    [I18N.t("supportFieldAddress"), site.address],
+    [I18N.t("supportFieldTel"), site.tel],
+    [I18N.t("supportFieldHours"), site.hours],
+    [I18N.t("supportFieldPeriod"), site.period],
+    [I18N.t("supportFieldClosed"), site.closed],
+    [I18N.t("supportFieldUnits"), typeof site.units === "number" ? formatNumber(site.units) + I18N.t("metricHousingStartedUnit") : ""],
+    [I18N.t("supportFieldStructure"), site.structure],
+    [
+      I18N.t("supportFieldStart"),
+      site.start_date ? site.start_date + (site.start_planned ? `（${I18N.t("supportHousingPlanned")}）` : "") : "",
+    ],
+    [I18N.t("supportFieldMoveIn"), site.move_in],
+    [I18N.t("supportFieldBuilder"), site.builder],
+    [I18N.t("supportFieldNote"), site.note],
+  ].filter(([, v]) => v);
+
+  const source = supportSourceOf(site);
+  const sourceHtml = source
+    ? `<p class="support-source">${I18N.t("sourcePrefix")}<a href="${source.url}" target="_blank" rel="noopener">${
+        source.name
+      }</a>${source.as_of ? `<span class="support-as-of">${I18N.t("supportAsOfTemplate", { date: formatSupportAsOf(source.as_of) })}</span>` : ""}</p>`
+    : "";
+
+  contentEl.innerHTML = `
+    <div class="detail-head">
+      <h3>${site.name}</h3>
+      <span class="detail-chip"><span class="dot" style="background:${supportTypeColor(
+        site.type
+      )}"></span>${supportTypeLabel(site.type)}</span>
+    </div>
+    <dl class="support-detail">
+      ${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}
+    </dl>
+    ${site.precision && site.precision !== "address" ? `<p class="support-note">${I18N.t("supportApproxNote")}</p>` : ""}
+    <p class="support-note">${I18N.t("supportAccuracyNote")}</p>
+    ${sourceHtml}`;
+}
+
+function renderSupportMode() {
+  const sites = filteredSupportSites();
+  updateSupportMap(sites);
+  updateSupportPanel(sites);
+  renderDetail();
+}
+
+/* ===========================================================
    統計ヘッダー（県合計）
    =========================================================== */
 
@@ -1193,6 +1483,9 @@ function buildWaterSourceNote(snapshot) {
 function buildStatNote(metric, snapshot) {
   if (metric.key === "deaths" || metric.key === "injured") return buildExtrasNote(metric.key, snapshot.extras);
   if (metric.key === "water_outage") return buildWaterSourceNote(snapshot);
+  // 応急住宅だけは出典が県の別ページ（進捗状況）で、着手日から各時点の
+  // 着工済み戸数を組み立てている。その前提を数値のそばに書いておく
+  if (metric.key === "housing_started") return I18N.t("metricHousingStartedNote");
   return null;
 }
 
@@ -1560,6 +1853,13 @@ function renderNewsDetail(name) {
 
 function renderDetail() {
   const contentEl = document.getElementById("detail-content");
+
+  // 支援拠点マップは市町村選択(state.selected)ではなく拠点選択で駆動する
+  if (state.mapMode === "support") {
+    renderSupportDetail();
+    return;
+  }
+
   const name = state.selected;
   if (!name) {
     contentEl.innerHTML = `<div class="detail-empty">${I18N.t("detailPlaceholder")}</div>`;
@@ -1829,6 +2129,26 @@ function updateHeaderDateTime(snapshot) {
   document.getElementById("current-datetime").textContent = formatDateTimeLocalized(snapshot.datetime);
   const linksEl = document.getElementById("source-links");
 
+  // 支援拠点マップは時点に連動しないので、拠点データ側の出典（県の各ページ）を出す
+  if (state.mapMode === "support") {
+    if (!supportData) {
+      linksEl.innerHTML = I18N.t("sourcePrefix") + I18N.t("supportEmptyNoData");
+      return;
+    }
+    const used = [...new Set(filteredSupportSites().map((s) => s.source))];
+    const links = used
+      .map((key) => supportData.sources[key])
+      .filter(Boolean)
+      .map(
+        (src) =>
+          `<a href="${src.url}" target="_blank" rel="noopener">${src.name}</a>${
+            src.as_of ? I18N.t("supportAsOfTemplate", { date: formatSupportAsOf(src.as_of) }) : ""
+          }`
+      );
+    linksEl.innerHTML = links.length ? I18N.t("sourcePrefix") + links.join("、") : I18N.t("sourcePrefix") + "—";
+    return;
+  }
+
   // ニュースマップ中は、その時点に対応する内閣府報へのリンクを出典として明示する
   // （数値マップ側の出典表示には一切手を入れない）
   if (state.mapMode === "news") {
@@ -1848,11 +2168,16 @@ function updateHeaderDateTime(snapshot) {
   }
 
   // snapshot.sources の資料名(s.name)自体は出典資料名なので翻訳しない
-  linksEl.innerHTML =
-    I18N.t("sourcePrefix") +
-    snapshot.sources
-      .map((s) => `<a href="${s.url}" target="_blank" rel="noopener">${s.name}</a>`)
-      .join("、");
+  const sources = snapshot.sources.map((s) => `<a href="${s.url}" target="_blank" rel="noopener">${s.name}</a>`);
+  const housingSource = supportData && supportData.sources ? supportData.sources.housing : null;
+  if (state.metric === "housing_started" && housingSource) {
+    sources.push(
+      `<a href="${housingSource.url}" target="_blank" rel="noopener">${housingSource.name}</a>${
+        housingSource.as_of ? I18N.t("supportAsOfTemplate", { date: formatSupportAsOf(housingSource.as_of) }) : ""
+      }`
+    );
+  }
+  linksEl.innerHTML = I18N.t("sourcePrefix") + sources.join("、");
 }
 
 // 下部固定バーの高さは style.css の --bar-h（固定値）だけで決まる。
@@ -1896,6 +2221,7 @@ function renderAll() {
   updateHeaderDateTime(snapshot);
 
   if (state.mapMode === "metric") renderMetricMode(snapshot);
+  else if (state.mapMode === "support") renderSupportMode();
   else renderNewsMode(snapshot);
 
   document.getElementById("slider").value = state.snapshotIndex;
@@ -1914,6 +2240,7 @@ function renderAll() {
 const MAP_MODES = [
   { key: "metric", labelKey: "modeMetric" },
   { key: "news", labelKey: "modeNews" },
+  { key: "support", labelKey: "modeSupport" },
 ];
 
 function buildModeSwitchUI() {
@@ -1948,8 +2275,10 @@ function setMapMode(mode) {
 
   const metricContentEl = document.getElementById("panel-metric-content");
   const newsContentEl = document.getElementById("panel-news-content");
+  const supportContentEl = document.getElementById("panel-support-content");
   if (metricContentEl) metricContentEl.hidden = mode !== "metric";
   if (newsContentEl) newsContentEl.hidden = mode !== "news";
+  if (supportContentEl) supportContentEl.hidden = mode !== "support";
 
   updateLayerVisibilityForMode();
   renderAll();
@@ -2182,6 +2511,7 @@ function onLanguageChanged() {
   buildModeSwitchUI();
   buildMetricSwitchUI();
   buildNewsFilterChips();
+  buildSupportFilterChips();
   buildBasemapSwitchUI();
   buildEventMeta();
   applyLabelLanguage(); // ベクタタイルの地名ラベルも表示言語に合わせる
@@ -2336,6 +2666,7 @@ function syncHashFromState() {
     if (state.snapshotIndex !== data.snapshots.length - 1) params.set("t", currentSnapshot().id);
     if (state.metric !== "evacuees") params.set("metric", state.metric);
     if (state.selected) params.set("muni", state.selected);
+    if (state.mapMode === "support" && state.selectedSite) params.set("site", state.selectedSite);
     const qs = params.toString();
     history.replaceState(null, "", location.pathname + location.search + (qs ? `#${qs}` : ""));
   } catch (e) {
@@ -2351,7 +2682,8 @@ function applyStateFromHash() {
   try {
     const params = new URLSearchParams(location.hash.slice(1));
 
-    if (params.get("mode") === "news") setMapMode("news");
+    const modeParam = params.get("mode");
+    if (modeParam === "news" || modeParam === "support") setMapMode(modeParam);
 
     const tParam = params.get("t");
     if (tParam) {
@@ -2364,6 +2696,9 @@ function applyStateFromHash() {
 
     const muniParam = params.get("muni");
     if (muniParam && muniData && muniData[muniParam]) selectMunicipality(muniParam, "hash");
+
+    const siteParam = params.get("site");
+    if (siteParam && supportSiteById(siteParam)) selectSupportSite(siteParam, "hash");
   } catch (e) {
     /* 不正なhashは黙って無視する */
   }
@@ -2393,6 +2728,15 @@ async function boot() {
     newsData = null;
   }
   if (newsData) state.newsActiveCategories = new Set(newsData.categories);
+
+  // 支援拠点データも同様に、未生成・404でも起動を止めない
+  try {
+    const supportRes = await fetch("data/support.json");
+    if (supportRes.ok) supportData = await supportRes.json();
+  } catch (e) {
+    supportData = null;
+  }
+  if (supportData) state.supportActiveTypes = new Set(supportTypesInData());
 
   // パネルの初期開閉（モバイルは畳む／デスクトップは開く）を、hash由来の
   // 市町村選択より先に決めておく。順序を逆にすると、hashで開いた詳細パネルを
@@ -2425,6 +2769,7 @@ async function boot() {
   buildModeSwitchUI();
   buildMetricSwitchUI();
   buildNewsFilterChips();
+  buildSupportFilterChips();
   wireControls();
   wireLabelHint();
   initLegendDisclosure();

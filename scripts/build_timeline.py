@@ -21,10 +21,40 @@ def parse_dt(s):
     return datetime.fromisoformat(s)
 
 
+def load_optional(name):
+    path = ROOT / "data" / name
+    if not path.exists():
+        return None
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def housing_started_by_muni(housing, dt):
+    """その時点までに着手済みの建設型応急住宅の戸数を市町村ごとに合算する。
+
+    「8月18日（予定）」のように着手予定の団地は、着手が確認できるまで
+    数えない（予定日を過ぎても県の資料が「予定」のままのことがあるため）。
+    団地が1つでも載っている市町村だけをキーに持たせ、未着手の市町村は
+    0 として明示する（キー自体が無いと「未報告」と区別できない）。
+    """
+    result = {}
+    for h in housing or []:
+        muni = h.get("muni")
+        if not muni:
+            continue
+        result.setdefault(muni, 0)
+        if h.get("start_planned") or not h.get("start_date") or h.get("units") is None:
+            continue
+        if h["start_date"] <= dt.date().isoformat():
+            result[muni] += h["units"]
+    return result
+
+
 def main():
     pref = load("pref_snapshots.json")
     bousai = load("bousai_snapshots.json")
     munis = load("municipalities.json")
+    support = load_optional("support_sites.json")
 
     bsnaps = sorted(bousai["snapshots"], key=lambda s: s["datetime"])
 
@@ -66,6 +96,14 @@ def main():
                     }
                 else:
                     unknown.add(name)
+
+        # 建設型応急住宅は県の別ページ（進捗状況）が出典で、報ごとの数値では
+        # ないため、着手日から各時点の着工済み戸数を組み立てて重ねる
+        for name, units in housing_started_by_muni(support and support.get("housing"), dt).items():
+            if name in munis:
+                m.setdefault(name, {})["housing_started"] = units
+            else:
+                unknown.add(name)
 
         t = p.get("totals") or {}
 
@@ -117,6 +155,19 @@ def main():
         json.dump(timeline, f, ensure_ascii=False, separators=(",", ":"))
     with open(out / "municipalities.json", "w", encoding="utf-8") as f:
         json.dump(munis, f, ensure_ascii=False, separators=(",", ":"))
+
+    # 支援拠点は「最新の一覧で上書きされる」情報で時点スライダーに連動しない。
+    # 生成物はそのまま web/data/support.json に置き、フロント側は読み込みに
+    # 失敗しても他のモードに影響しないよう個別にtry/catchする
+    if support:
+        with open(out / "support.json", "w", encoding="utf-8") as f:
+            json.dump(support, f, ensure_ascii=False, separators=(",", ":"))
+        by_type = {}
+        for s in support["sites"]:
+            by_type[s["type"]] = by_type.get(s["type"], 0) + 1
+        print(f"support: {len(support['sites'])} sites {by_type}")
+    else:
+        print("support_sites.json not found; skipped support.json")
 
     news_path = ROOT / "data" / "news_events.json"
     if news_path.exists():

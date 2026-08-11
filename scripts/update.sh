@@ -43,6 +43,11 @@ curl -sL "https://www.bousai.go.jp/updates/r8kumamoto_jishin/status/index.html" 
     fi
   done
 
+echo "== 熊本県 生活支援ページ（支援拠点・応急住宅）を確認 =="
+# 支援拠点はページ構造の変更で失敗しうる。被害数値の更新を止めたくないので
+# 失敗しても前回の data/support_sites.json のまま先へ進める
+python3 scripts/parse_support.py || echo "  取得に失敗したため、前回の支援拠点データのまま続行します"
+
 echo "== パースとマージ =="
 python3 scripts/parse_pref.py
 python3 scripts/parse_bousai.py

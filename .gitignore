@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 .server.pid
 _site/
+# pdftotext -bbox-layout の中間ファイル（PDFから再生成できる）
+data/raw/support/*.bbox.html

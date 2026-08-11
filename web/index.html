@@ -40,7 +40,7 @@
 <!-- ベースマップ（既定=モノクロ）のベクタタイル配信元。初回描画までの接続確立を前倒しする -->
 <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
 <!-- ?v= はキャッシュバスター。app.js/i18n.js/style.css を変えたら3つとも同じ値で上げる -->
-<link rel="stylesheet" href="style.css?v=20260810a">
+<link rel="stylesheet" href="style.css?v=20260811a">
 </head>
 <body>
 
@@ -116,6 +116,17 @@
       <h2 id="news-heading" data-i18n="newsHeading">ニュース一覧</h2>
       <ol class="news-list" id="news-list" aria-labelledby="news-heading"></ol>
     </div>
+
+    <!-- 支援拠点マップ。時点スライダーには連動しない（県が最新版で
+         上書きする性質の情報なので常に最新の一覧を出す） -->
+    <div id="panel-support-content" class="panel-scroll" hidden>
+      <h2 class="panel-subhead" data-i18n="panelSupportSubhead">種別で絞り込み</h2>
+      <div class="news-filter support-filter" id="support-filter" role="group" data-i18n-aria="supportFilterAriaLabel" aria-label="支援拠点の種別で絞り込み"></div>
+      <p class="support-timeless-note" data-i18n="supportTimelessNote">支援拠点は最新の公表情報です（時点スライダーには連動しません）。</p>
+
+      <h2 id="support-heading" data-i18n="supportHeading">支援拠点一覧</h2>
+      <ol class="support-list" id="support-list" aria-labelledby="support-heading"></ol>
+    </div>
   </aside>
 
   <div class="map-wrap">
@@ -131,6 +142,7 @@
 
     <div id="overlay-labels" aria-hidden="true"></div>
     <div id="news-overlay" aria-hidden="true"></div>
+    <div id="support-overlay" aria-hidden="true"></div>
 
     <button type="button" id="label-hint" class="label-hint" hidden></button>
 
@@ -215,9 +227,9 @@
 </noscript>
 <!-- /BUILD:STATIC -->
 
-<script src="i18n.js?v=20260810a"></script>
+<script src="i18n.js?v=20260811a"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"
   integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
-<script src="app.js?v=20260810a"></script>
+<script src="app.js?v=20260811a"></script>
 </body>
 </html>
