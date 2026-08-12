@@ -339,7 +339,9 @@ def parse_file(path):
 
     m = re.match(r"bousai_(.+)\.txt$", path.name)
     suffix = m.group(1) if m else path.stem.replace("bousai_", "")
-    source_url = f"https://www.bousai.go.jp/updates/r8kumamoto_jishin/pdf/r8kumamoto_jishin_{suffix}.pdf"
+    # 日次報PDFは status/ 配下に置かれている（当初は直下だったが移動し、
+    # 直下のURLは全報とも404になる）。サイト上の出典リンクもこちらに合わせる
+    source_url = f"https://www.bousai.go.jp/updates/r8kumamoto_jishin/status/pdf/r8kumamoto_jishin_{suffix}.pdf"
 
     water_outage, water_outage_total = parse_water_section(text)
     power_current, power_max = parse_power_section(text)

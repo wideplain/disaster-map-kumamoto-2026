@@ -518,22 +518,23 @@ def parse_report(path, muni_names_by_len_desc):
 
 def build_reports_meta(files):
     snapshots = json.loads(SNAPSHOTS_PATH.read_text(encoding="utf-8"))["snapshots"]
-    by_url_suffix = {}
+    # 報とスナップショットの対応はPDFのファイル名の日付部分で取る。
+    # 以前は source_url を突き合わせていたが、配信元のURLが変わる（直下→status/配下）
+    # だけで全報が対応づかなくなり、ニュースが丸ごと消えるため、URLには依存させない
+    by_suffix = {}
     for snap in snapshots:
-        by_url_suffix[snap["source_url"]] = snap
+        m = re.search(r"r8kumamoto_jishin_([\w-]+)\.pdf$", snap["source_url"])
+        if m:
+            by_suffix[m.group(1)] = snap
 
     reports = []
     file_to_report_id = {}
     for path in files:
         m = re.match(r"bousai_(.+)\.txt$", path.name)
         suffix = m.group(1) if m else path.stem.replace("bousai_", "")
-        source_url = (
-            f"https://www.bousai.go.jp/updates/r8kumamoto_jishin/pdf/"
-            f"r8kumamoto_jishin_{suffix}.pdf"
-        )
-        snap = by_url_suffix.get(source_url)
+        snap = by_suffix.get(suffix)
         if snap is None:
-            print(f"WARNING: no matching snapshot for {path.name} ({source_url})", file=sys.stderr)
+            print(f"WARNING: no matching snapshot for {path.name} (suffix={suffix})", file=sys.stderr)
             continue
         reports.append({
             "id": snap["id"],
