@@ -1481,12 +1481,25 @@ function buildWaterSourceNote(snapshot) {
 }
 
 function buildStatNote(metric, snapshot) {
-  if (metric.key === "deaths" || metric.key === "injured") return buildExtrasNote(metric.key, snapshot.extras);
-  if (metric.key === "water_outage") return buildWaterSourceNote(snapshot);
-  // 応急住宅だけは出典が県の別ページ（進捗状況）で、着手日から各時点の
-  // 着工済み戸数を組み立てている。その前提を数値のそばに書いておく
-  if (metric.key === "housing_started") return I18N.t("metricHousingStartedNote");
-  return null;
+  const notes = [];
+  // 県が資料を出さなかった日は内閣府報だけの時点になる。市町村別の内訳は
+  // 断水しか無く、円もランキングもほぼ空になるので、必ず理由を出す
+  if (snapshot.bousai_only) notes.push(I18N.t("bousaiOnlySnapshotNote"));
+
+  if (metric.key === "deaths" || metric.key === "injured") {
+    const extras = buildExtrasNote(metric.key, snapshot.extras);
+    if (extras) notes.push(extras);
+  } else if (metric.key === "water_outage") {
+    // 内閣府報のみの時点は市町村別も合計も内閣府報の値なので、
+    // 「県資料の未報告分を補完している」という注記は当てはまらない
+    const water = snapshot.bousai_only ? null : buildWaterSourceNote(snapshot);
+    if (water) notes.push(water);
+  } else if (metric.key === "housing_started") {
+    // 応急住宅だけは出典が県の別ページ（進捗状況）で、着手日から各時点の
+    // 着工済み戸数を組み立てている。その前提を数値のそばに書いておく
+    notes.push(I18N.t("metricHousingStartedNote"));
+  }
+  return notes.length ? notes.join(" ") : null;
 }
 
 function updateStatHeader(snapshot, metric) {
@@ -1536,7 +1549,12 @@ function updateRanking(snapshot, metric) {
     li.dataset.name = r.name;
     if (state.selected === r.name) li.classList.add("is-selected");
     const barPct = maxV ? (r.value / maxV) * 100 : 0;
-    const waterBadge = metric.key === "water_outage" ? waterSourceBadgeHtml(snapshot.municipalities[r.name]) : "";
+    // 内閣府報のみの時点は全市町村が内閣府の値なので、行ごとのバッジは付けない
+    // （全行に付くと市町村名が押し出されて読めなくなる。由来は上の注記で示す）
+    const waterBadge =
+      metric.key === "water_outage" && !snapshot.bousai_only
+        ? waterSourceBadgeHtml(snapshot.municipalities[r.name])
+        : "";
     li.innerHTML = `
       <span class="rank-no">${i + 1}</span>
       <span class="rank-name">${muniDisplayName(r.name)}</span>${prefBadgeHtml(r.name)}${waterBadge}
@@ -1555,6 +1573,15 @@ function updateRanking(snapshot, metric) {
     });
     listEl.appendChild(li);
   });
+
+  if (!rows.length) {
+    const li = document.createElement("li");
+    li.className = "ranking-empty";
+    li.textContent = snapshot.bousai_only
+      ? I18N.t("rankingBousaiOnlyEmpty")
+      : I18N.t("rankingEmptyNoData");
+    listEl.appendChild(li);
+  }
 }
 
 function updateRankingSelectionHighlight() {

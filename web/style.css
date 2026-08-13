@@ -925,6 +925,14 @@ button, select, input {
   flex: none;
 }
 
+/* 指標にデータが無い時点（内閣府報のみの日など）のランキング欄 */
+.ranking-empty {
+  color: var(--ink-sub);
+  font-size: var(--fs-xs);
+  padding: 12px 4px;
+  line-height: 1.5;
+}
+
 /* ===== 支援拠点マップ =====
    チップは .news-chip-btn を流用し、件数バッジと一覧・詳細だけを足す */
 

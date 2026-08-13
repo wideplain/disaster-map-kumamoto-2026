@@ -133,6 +133,56 @@ def main():
             }
         )
 
+    # 県が資料を出さない日（8/12など）は内閣府報だけの時点を足す。
+    # 何も足さないとその日の報がスライダーのどこにも対応せず、
+    # ニュースマップから丸ごと読めなくなるため。
+    # 内閣府報には市町村別の断水しかないので、市町村別の内訳は断水だけ、
+    # 県合計は避難所・避難者・断水だけを載せ、他は未報告(null)のままにする。
+    # 由来の違いは bousai_only で区別し、UI側で「内閣府報のみの時点」と明示する
+    pref_dts = [parse_dt(p["datetime"]) for p in pref["snapshots"]]
+    for b in bsnaps:
+        dt = parse_dt(b["datetime"])
+        if any(abs((dt - pd).total_seconds()) <= 12 * 3600 for pd in pref_dts):
+            continue
+
+        m = {}
+        for name, w in (b.get("water_outage") or {}).items():
+            if name in munis:
+                m[name] = {
+                    "water_outage": w.get("current"),
+                    "water_outage_source": "内閣府",
+                    "water_outage_max": w.get("max"),
+                    "water_period": w.get("period"),
+                    "water_note": w.get("note"),
+                }
+            else:
+                unknown.add(name)
+        for name, units in housing_started_by_muni(support and support.get("housing"), dt).items():
+            if name in munis:
+                m.setdefault(name, {})["housing_started"] = units
+
+        bs = b.get("summary") or {}
+        snapshots.append(
+            {
+                "id": b["id"],
+                "datetime": b["datetime"],
+                "bousai_only": True,
+                "sources": [{"name": b["source_name"], "url": b["source_url"]}],
+                "summary": {
+                    "shelters": bs.get("shelters"),
+                    "evacuees": bs.get("evacuees"),
+                    "deaths": None,
+                    "injured": None,
+                    "houses": None,
+                    "water_outage": (b.get("water_outage_total") or {}).get("current"),
+                },
+                "extras": {},
+                "municipalities": m,
+            }
+        )
+
+    snapshots.sort(key=lambda s: s["datetime"])
+
     quake = bousai.get("quake") or {}
     timeline = {
         "event": {

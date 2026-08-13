@@ -187,6 +187,9 @@ const STRINGS = {
     statPrefTotal: "熊本県 合計",
     statLabelTemplate: "熊本県合計 - {metric}",
     rankingHeading: "市町村別の状況（多い順・10件）",
+    bousaiOnlySnapshotNote: "この時点は内閣府報のみ（県は資料を公表せず）。市町村別は断水のみで、死者・負傷者・住家被害は未公表です。",
+    rankingBousaiOnlyEmpty: "この時点は内閣府報のみのため、この指標の市町村別データはありません。",
+    rankingEmptyNoData: "この時点はこの指標のデータがありません。",
     tableToggleBtn: "表で見る（全市町村・全指標）",
 
     panelNewsSubhead: "カテゴリで絞り込み",
@@ -358,6 +361,9 @@ const STRINGS = {
     statPrefTotal: "熊本県ぜんぶ",
     statLabelTemplate: "熊本県ぜんぶ - {metric}",
     rankingHeading: "町ごとのじょうほう（多い じゅん・10）",
+    bousaiOnlySnapshotNote: "この ひは くにの しりょうだけです。しちょうそんごとの すうじは だんすい だけ わかります。",
+    rankingBousaiOnlyEmpty: "この ひは くにの しりょうだけなので、しちょうそんごとの すうじは ありません。",
+    rankingEmptyNoData: "この ひは この すうじが ありません。",
     tableToggleBtn: "ひょうで見る（ぜんぶの町・ぜんぶのしゅるい）",
 
     panelNewsSubhead: "しゅるいでえらぶ",
@@ -528,6 +534,9 @@ const STRINGS = {
     statPrefTotal: "Kumamoto Pref. total",
     statLabelTemplate: "Kumamoto Pref. total - {metric}",
     rankingHeading: "Municipalities (top 10, highest first)",
+    bousaiOnlySnapshotNote: "This time point comes only from the Cabinet Office report (the prefecture published nothing). Only water outage is available by municipality; deaths, injuries and housing damage are not published.",
+    rankingBousaiOnlyEmpty: "No municipal data for this indicator at this time point (Cabinet Office report only).",
+    rankingEmptyNoData: "No data for this indicator at this time point.",
     tableToggleBtn: "View table (all municipalities, all indicators)",
 
     panelNewsSubhead: "Filter by category",
@@ -698,6 +707,9 @@ const STRINGS = {
     statPrefTotal: "熊本县合计",
     statLabelTemplate: "熊本县合计 - {metric}",
     rankingHeading: "各市町村情况（按数量排序・前10）",
+    bousaiOnlySnapshotNote: "该时点仅有内阁府报告（熊本县未公布资料）。市町村别数据仅有停水，死亡・受伤・住宅受损未公布。",
+    rankingBousaiOnlyEmpty: "该时点仅有内阁府报告，没有该指标的市町村别数据。",
+    rankingEmptyNoData: "该时点没有该指标的数据。",
     tableToggleBtn: "查看表格（全部市町村・全部指标）",
 
     panelNewsSubhead: "按类别筛选",
@@ -868,6 +880,9 @@ const STRINGS = {
     statPrefTotal: "Tổng tỉnh Kumamoto",
     statLabelTemplate: "Tổng tỉnh Kumamoto - {metric}",
     rankingHeading: "Theo khu vực (nhiều nhất, top 10)",
+    bousaiOnlySnapshotNote: "Mốc thời gian này chỉ có báo cáo của Văn phòng Nội các (tỉnh không công bố tài liệu). Theo địa phương chỉ có số hộ mất nước; số người chết, bị thương và thiệt hại nhà ở chưa được công bố.",
+    rankingBousaiOnlyEmpty: "Mốc thời gian này chỉ có báo cáo của Văn phòng Nội các nên không có dữ liệu theo địa phương cho chỉ số này.",
+    rankingEmptyNoData: "Không có dữ liệu cho chỉ số này tại mốc thời gian này.",
     tableToggleBtn: "Xem bảng (tất cả khu vực, tất cả chỉ số)",
 
     panelNewsSubhead: "Lọc theo danh mục",
@@ -1038,6 +1053,9 @@ const STRINGS = {
     statPrefTotal: "구마모토현 합계",
     statLabelTemplate: "구마모토현 합계 - {metric}",
     rankingHeading: "시정촌별 현황（많은 순・상위 10）",
+    bousaiOnlySnapshotNote: "이 시점은 내각부 보고서만 있습니다(현은 자료를 공표하지 않음). 시정촌별은 단수만 있으며 사망·부상·주택 피해는 미공표입니다.",
+    rankingBousaiOnlyEmpty: "이 시점은 내각부 보고서만 있어 이 지표의 시정촌별 데이터가 없습니다.",
+    rankingEmptyNoData: "이 시점에는 이 지표의 데이터가 없습니다.",
     tableToggleBtn: "표로 보기（전체 시정촌・전체 지표）",
 
     panelNewsSubhead: "카테고리로 필터",
@@ -1208,6 +1226,9 @@ const STRINGS = {
     statPrefTotal: "Kabuuan ng Kumamoto",
     statLabelTemplate: "Kabuuan ng Kumamoto - {metric}",
     rankingHeading: "Ayon sa munisipalidad (pinakamarami, top 10)",
+    bousaiOnlySnapshotNote: "Ang oras na ito ay mula lang sa ulat ng Cabinet Office (walang inilabas ang prepektura). Tubig lang ang may datos kada munisipalidad; hindi pa inilalathala ang namatay, nasugatan at pinsala sa bahay.",
+    rankingBousaiOnlyEmpty: "Walang datos kada munisipalidad para sa indicator na ito sa oras na ito (ulat lang ng Cabinet Office).",
+    rankingEmptyNoData: "Walang datos para sa indicator na ito sa oras na ito.",
     tableToggleBtn: "Tingnan ang talahanayan (lahat ng munisipalidad, lahat ng indicator)",
 
     panelNewsSubhead: "I-filter ayon sa kategorya",
@@ -1378,6 +1399,9 @@ const STRINGS = {
     statPrefTotal: "कुमामोतो प्रान्त जम्मा",
     statLabelTemplate: "कुमामोतो प्रान्त जम्मा - {metric}",
     rankingHeading: "नगरपालिकाअनुसार अवस्था（बढी भएका क्रममा・माथिल्लो १०）",
+    bousaiOnlySnapshotNote: "यो समयबिन्दुमा क्याबिनेट कार्यालयको प्रतिवेदन मात्र छ (प्रान्तले कागजात प्रकाशन गरेन)। नगरपालिकाअनुसार पानी बन्द मात्र उपलब्ध छ; मृत्यु, घाइते र घर क्षति प्रकाशित छैन।",
+    rankingBousaiOnlyEmpty: "यो समयबिन्दुमा क्याबिनेट कार्यालयको प्रतिवेदन मात्र भएकाले यस सूचकको नगरपालिकागत तथ्याङ्क छैन।",
+    rankingEmptyNoData: "यो समयबिन्दुमा यस सूचकको तथ्याङ्क छैन।",
     tableToggleBtn: "तालिकामा हेर्नुहोस्（सबै नगरपालिका・सबै सूचक）",
 
     panelNewsSubhead: "श्रेणीअनुसार छान्नुहोस्",
@@ -1548,6 +1572,9 @@ const STRINGS = {
     statPrefTotal: "Total da Província de Kumamoto",
     statLabelTemplate: "Total da Província de Kumamoto - {metric}",
     rankingHeading: "Por município (maiores valores, top 10)",
+    bousaiOnlySnapshotNote: "Este momento vem apenas do relatório do Gabinete (a província não publicou dados). Por município há só falta de água; mortes, feridos e danos às casas não foram publicados.",
+    rankingBousaiOnlyEmpty: "Sem dados por município para este indicador neste momento (apenas relatório do Gabinete).",
+    rankingEmptyNoData: "Sem dados para este indicador neste momento.",
     tableToggleBtn: "Ver tabela (todos os municípios, todos os indicadores)",
 
     panelNewsSubhead: "Filtrar por categoria",
@@ -1718,6 +1745,9 @@ const STRINGS = {
     statPrefTotal: "Total Prefektur Kumamoto",
     statLabelTemplate: "Total Prefektur Kumamoto - {metric}",
     rankingHeading: "Berdasarkan wilayah (terbanyak, 10 teratas)",
+    bousaiOnlySnapshotNote: "Titik waktu ini hanya dari laporan Kantor Kabinet (prefektur tidak menerbitkan data). Per kota/kabupaten hanya tersedia gangguan air; korban meninggal, luka, dan kerusakan rumah belum diumumkan.",
+    rankingBousaiOnlyEmpty: "Tidak ada data per kota/kabupaten untuk indikator ini pada titik waktu ini (hanya laporan Kantor Kabinet).",
+    rankingEmptyNoData: "Tidak ada data untuk indikator ini pada titik waktu ini.",
     tableToggleBtn: "Lihat tabel (semua wilayah, semua indikator)",
 
     panelNewsSubhead: "Filter berdasarkan kategori",
@@ -1888,6 +1918,9 @@ const STRINGS = {
     statPrefTotal: "ကုမမိုတို ပြည်နယ် စုစုပေါင်း",
     statLabelTemplate: "ကုမမိုတို ပြည်နယ် စုစုပေါင်း - {metric}",
     rankingHeading: "မြို့နယ်အလိုက် အခြေအနေ（အများဆုံး အစီအစဉ်・ထိပ်ဆုံး ၁၀）",
+    bousaiOnlySnapshotNote: "ဤအချိန်သည် အစိုးရအဖွဲ့ရုံး၏ အစီရင်ခံစာသာ ဖြစ်သည် (ခရိုင်မှ စာရွက်စာတမ်း မထုတ်ပြန်ပါ)။ မြို့နယ်အလိုက် ရေပြတ်တောက်မှုသာ ရရှိပြီး သေဆုံး၊ ဒဏ်ရာ၊ အိမ်ပျက်စီးမှု မထုတ်ပြန်သေးပါ။",
+    rankingBousaiOnlyEmpty: "ဤအချိန်တွင် အစိုးရအဖွဲ့ရုံးအစီရင်ခံစာသာ ရှိသဖြင့် ဤညွှန်းကိန်း၏ မြို့နယ်အလိုက် ဒေတာ မရှိပါ။",
+    rankingEmptyNoData: "ဤအချိန်တွင် ဤညွှန်းကိန်း၏ ဒေတာ မရှိပါ။",
     tableToggleBtn: "ဇယားဖြင့် ကြည့်ရန်（မြို့နယ်အားလုံး・အညွှန်းကိန်း အားလုံး）",
 
     panelNewsSubhead: "အမျိုးအစားဖြင့် စစ်ထုတ်ရန်",

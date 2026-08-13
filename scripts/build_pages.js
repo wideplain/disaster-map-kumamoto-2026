@@ -37,6 +37,10 @@ const SUPPORT_TYPE_LABEL_KEYS = {
 
 const snapshots = timeline.snapshots;
 const latestSnapshot = snapshots[snapshots.length - 1];
+// 県が資料を出さなかった日は内閣府報だけの時点(bousai_only)になり、市町村別は
+// 断水しか入っていない。全市町村・全指標の表や説明文はそれを最新として扱うと
+// ほぼ空になってしまうので、市町村別が揃っている最新の時点を別に持っておく
+const latestFullSnapshot = [...snapshots].reverse().find((s) => !s.bousai_only) || latestSnapshot;
 const firstSnapshot = snapshots[0];
 
 /* ===========================================================
@@ -191,10 +195,10 @@ function intlDateTime(iso, langCode) {
 
 function descriptionVars(lang) {
   return {
-    date: intlDateTime(latestSnapshot.datetime, lang.code),
-    evacuees: fmtNumOrDash(latestSnapshot.summary.evacuees, lang.code),
-    shelters: fmtNumOrDash(latestSnapshot.summary.shelters, lang.code),
-    water: fmtNumOrDash(latestSnapshot.summary.water_outage, lang.code),
+    date: intlDateTime(latestFullSnapshot.datetime, lang.code),
+    evacuees: fmtNumOrDash(latestFullSnapshot.summary.evacuees, lang.code),
+    shelters: fmtNumOrDash(latestFullSnapshot.summary.shelters, lang.code),
+    water: fmtNumOrDash(latestFullSnapshot.summary.water_outage, lang.code),
   };
 }
 function metaDescriptionFor(lang) {
@@ -546,10 +550,10 @@ ${hreflangHtml}<script async src="https://www.googletagmanager.com/gtag/js?id=G-
 function buildPrefSummaryTable(lang) {
   I18N.setLang(lang.code, { persist: false });
   let html = `<div class="table-scroll"><table><caption>${escapeHtml(
-    I18N.t("tableCaption", { date: I18N.formatDateTimeForLang(latestSnapshot.datetime, lang.code) })
+    I18N.t("tableCaption", { date: I18N.formatDateTimeForLang(latestFullSnapshot.datetime, lang.code) })
   )}</caption><tbody>`;
   METRICS.forEach((m) => {
-    const val = prefMetricValue(latestSnapshot, m);
+    const val = prefMetricValue(latestFullSnapshot, m);
     const cell = val === null ? I18N.t("valNoData") : `${fmtNum(val, lang.code)}${I18N.t(m.unitKey)}`;
     const cls = val === null ? ' class="nodata"' : "";
     html += `<tr><th scope="row">${escapeHtml(I18N.t(m.labelKey))}</th><td${cls}>${escapeHtml(cell)}</td></tr>`;
@@ -561,7 +565,7 @@ function buildPrefSummaryTable(lang) {
 function buildMuniTable(lang) {
   I18N.setLang(lang.code, { persist: false });
   let html = `<div class="table-scroll"><table><caption>${escapeHtml(
-    I18N.t("tableCaption", { date: I18N.formatDateTimeForLang(latestSnapshot.datetime, lang.code) })
+    I18N.t("tableCaption", { date: I18N.formatDateTimeForLang(latestFullSnapshot.datetime, lang.code) })
   )}</caption><thead><tr><th scope="col">${escapeHtml(I18N.t("tableColMuni"))}</th>`;
   METRICS.forEach((m) => {
     html += `<th scope="col">${escapeHtml(I18N.t(m.labelKey))}<br>(${escapeHtml(I18N.t(m.unitKey))})</th>`;
@@ -575,7 +579,7 @@ function buildMuniTable(lang) {
     ...names.filter((n) => muniData[n].pref !== "熊本県"),
   ];
   orderedNames.forEach((name) => {
-    const rec = latestSnapshot.municipalities[name];
+    const rec = latestFullSnapshot.municipalities[name];
     const loc = muniData[name];
     const displayName = escapeHtml(I18N.muniName(name, lang.code));
     const prefBadge = loc.pref === "熊本県" ? "" : ` <small>(${escapeHtml(I18N.prefName(loc.pref, lang.code))})</small>`;
