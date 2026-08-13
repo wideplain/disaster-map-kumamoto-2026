@@ -2360,6 +2360,140 @@
         "power_outage_current": 48530,
         "power_outage_max": 48530
       }
+    },
+    {
+      "id": "20260813-1000",
+      "datetime": "2026-08-13T10:00:00+09:00",
+      "source_name": "内閣府 被害状況等について",
+      "source_url": "https://www.bousai.go.jp/updates/r8kumamoto_jishin/status/pdf/r8kumamoto_jishin_20260813.pdf",
+      "water_outage": {
+        "柳川市": {
+          "pref": "福岡県",
+          "max": 7,
+          "current": 0,
+          "period": "7/28",
+          "note": "復旧済"
+        },
+        "太良町": {
+          "pref": "佐賀県",
+          "max": 41,
+          "current": 0,
+          "period": "7/28～29",
+          "note": "復旧済"
+        },
+        "南島原市": {
+          "pref": "長崎県",
+          "max": 439,
+          "current": 0,
+          "period": "7/28～29",
+          "note": "復旧済"
+        },
+        "熊本市": {
+          "pref": "熊本県",
+          "max": 20970,
+          "current": 0,
+          "period": "7/28～8/3",
+          "note": "復旧済"
+        },
+        "八代市": {
+          "pref": "熊本県",
+          "max": 25269,
+          "current": 22382,
+          "period": "7/28～",
+          "note": ""
+        },
+        "宇土市": {
+          "pref": "熊本県",
+          "max": 12200,
+          "current": 0,
+          "period": "7/28～8/1",
+          "note": "復旧済"
+        },
+        "上天草市": {
+          "pref": "熊本県",
+          "max": 7670,
+          "current": 0,
+          "period": "7/28～8/1",
+          "note": "夜間断水あり"
+        },
+        "宇城市": {
+          "pref": "熊本県",
+          "max": 18000,
+          "current": 4098,
+          "period": "7/28～",
+          "note": ""
+        },
+        "天草市": {
+          "pref": "熊本県",
+          "max": 1100,
+          "current": 0,
+          "period": "7/28～8/1",
+          "note": "復旧済"
+        },
+        "合志市": {
+          "pref": "熊本県",
+          "max": null,
+          "current": 0,
+          "period": "7/28",
+          "note": "復旧済"
+        },
+        "御船町": {
+          "pref": "熊本県",
+          "max": 2600,
+          "current": 0,
+          "period": "7/28～8/1",
+          "note": "復旧済"
+        },
+        "甲佐町": {
+          "pref": "熊本県",
+          "max": 500,
+          "current": 0,
+          "period": "7/28～8/7",
+          "note": "復旧済"
+        },
+        "氷川町": {
+          "pref": "熊本県",
+          "max": 3231,
+          "current": 1901,
+          "period": "7/28～",
+          "note": "管破損に伴う漏水"
+        },
+        "芦北町": {
+          "pref": "熊本県",
+          "max": 1000,
+          "current": 0,
+          "period": "7/28～8/1",
+          "note": "復旧済"
+        },
+        "人吉市": {
+          "pref": "熊本県",
+          "max": 15000,
+          "current": 0,
+          "period": "7/29～30",
+          "note": "復旧済"
+        }
+      },
+      "water_outage_total": {
+        "max": 108100,
+        "current": 28400
+      },
+      "deaths_breakdown": {
+        "八代市": 20,
+        "宇城市": 3,
+        "嘉島町": 7,
+        "甲佐町": 1,
+        "氷川町": 5
+      },
+      "deaths_related_possible": 1,
+      "deaths_related_investigating": 2,
+      "summary": {
+        "shelters": 84,
+        "evacuees": 3755,
+        "shelters_max": 506,
+        "evacuees_max": 9931,
+        "power_outage_current": 48530,
+        "power_outage_max": 48530
+      }
     }
   ]
 }
