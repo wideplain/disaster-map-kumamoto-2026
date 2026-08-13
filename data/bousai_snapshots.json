@@ -333,6 +333,7 @@
       "deaths_breakdown": {},
       "deaths_related_possible": null,
       "deaths_related_investigating": null,
+      "casualty_pref": null,
       "summary": {
         "shelters": 506,
         "evacuees": 9186,
@@ -471,6 +472,7 @@
       },
       "deaths_related_possible": null,
       "deaths_related_investigating": null,
+      "casualty_pref": null,
       "summary": {
         "shelters": 419,
         "evacuees": 7547,
@@ -610,6 +612,13 @@
       },
       "deaths_related_possible": null,
       "deaths_related_investigating": null,
+      "casualty_pref": {
+        "source": "消防庁",
+        "deaths": 12,
+        "injured": 74,
+        "casualties_total": 86,
+        "houses": 2
+      },
       "summary": {
         "shelters": 419,
         "evacuees": 9931,
@@ -744,6 +753,13 @@
       },
       "deaths_related_possible": null,
       "deaths_related_investigating": 9,
+      "casualty_pref": {
+        "source": "消防庁",
+        "deaths": 34,
+        "injured": 86,
+        "casualties_total": 120,
+        "houses": 2
+      },
       "summary": {
         "shelters": 399,
         "evacuees": 9637,
@@ -878,6 +894,13 @@
       },
       "deaths_related_possible": null,
       "deaths_related_investigating": 1,
+      "casualty_pref": {
+        "source": "消防庁",
+        "deaths": 35,
+        "injured": 96,
+        "casualties_total": 131,
+        "houses": 1440
+      },
       "summary": {
         "shelters": 236,
         "evacuees": 9374,
@@ -1012,6 +1035,13 @@
       },
       "deaths_related_possible": null,
       "deaths_related_investigating": 2,
+      "casualty_pref": {
+        "source": "消防庁",
+        "deaths": 36,
+        "injured": 103,
+        "casualties_total": 139,
+        "houses": 1845
+      },
       "summary": {
         "shelters": 211,
         "evacuees": 9158,
@@ -1146,6 +1176,13 @@
       },
       "deaths_related_possible": 1,
       "deaths_related_investigating": 2,
+      "casualty_pref": {
+        "source": "消防庁",
+        "deaths": 38,
+        "injured": 114,
+        "casualties_total": 152,
+        "houses": 2197
+      },
       "summary": {
         "shelters": 206,
         "evacuees": 8700,
@@ -1280,6 +1317,7 @@
       },
       "deaths_related_possible": 1,
       "deaths_related_investigating": 1,
+      "casualty_pref": null,
       "summary": {
         "shelters": 150,
         "evacuees": 8244,
@@ -1414,6 +1452,7 @@
       },
       "deaths_related_possible": 1,
       "deaths_related_investigating": 1,
+      "casualty_pref": null,
       "summary": {
         "shelters": 150,
         "evacuees": 8244,
@@ -1548,6 +1587,13 @@
       },
       "deaths_related_possible": 1,
       "deaths_related_investigating": 1,
+      "casualty_pref": {
+        "source": "消防庁",
+        "deaths": 38,
+        "injured": 143,
+        "casualties_total": 181,
+        "houses": 7939
+      },
       "summary": {
         "shelters": 130,
         "evacuees": 6896,
@@ -1682,6 +1728,13 @@
       },
       "deaths_related_possible": 1,
       "deaths_related_investigating": 1,
+      "casualty_pref": {
+        "source": "消防庁",
+        "deaths": 38,
+        "injured": 146,
+        "casualties_total": 184,
+        "houses": 8599
+      },
       "summary": {
         "shelters": 124,
         "evacuees": 6785,
@@ -1816,6 +1869,13 @@
       },
       "deaths_related_possible": 1,
       "deaths_related_investigating": 2,
+      "casualty_pref": {
+        "source": "消防庁",
+        "deaths": 39,
+        "injured": 166,
+        "casualties_total": 205,
+        "houses": 8907
+      },
       "summary": {
         "shelters": 123,
         "evacuees": 6573,
@@ -1950,6 +2010,13 @@
       },
       "deaths_related_possible": 1,
       "deaths_related_investigating": 2,
+      "casualty_pref": {
+        "source": "消防庁",
+        "deaths": 39,
+        "injured": 169,
+        "casualties_total": 208,
+        "houses": 9366
+      },
       "summary": {
         "shelters": 120,
         "evacuees": 6362,
@@ -2084,6 +2151,7 @@
       },
       "deaths_related_possible": 1,
       "deaths_related_investigating": 2,
+      "casualty_pref": null,
       "summary": {
         "shelters": 99,
         "evacuees": 6171,
@@ -2218,6 +2286,13 @@
       },
       "deaths_related_possible": 1,
       "deaths_related_investigating": 2,
+      "casualty_pref": {
+        "source": "消防庁",
+        "deaths": 39,
+        "injured": 353,
+        "casualties_total": 392,
+        "houses": 10781
+      },
       "summary": {
         "shelters": 91,
         "evacuees": 3764,
@@ -2352,6 +2427,13 @@
       },
       "deaths_related_possible": 1,
       "deaths_related_investigating": 2,
+      "casualty_pref": {
+        "source": "消防庁",
+        "deaths": 39,
+        "injured": 353,
+        "casualties_total": 392,
+        "houses": 11232
+      },
       "summary": {
         "shelters": 83,
         "evacuees": 3646,
@@ -2486,6 +2568,13 @@
       },
       "deaths_related_possible": 1,
       "deaths_related_investigating": 2,
+      "casualty_pref": {
+        "source": "消防庁",
+        "deaths": 39,
+        "injured": 354,
+        "casualties_total": 393,
+        "houses": 11788
+      },
       "summary": {
         "shelters": 84,
         "evacuees": 3755,

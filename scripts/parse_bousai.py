@@ -212,6 +212,65 @@ def parse_evacuee_summary(text):
     return shelters, evacuees, shelters_max, evacuees_max
 
 
+def parse_casualty_summary(text):
+    """「２ 人的・住家被害等の状況（消防庁情報）」の都道府県別表から熊本県の行を読む。
+
+    列は空セルが多く（行方不明者・床上/床下浸水など）、桁揃えも報ごとに動くため
+    位置合わせでは取り違えやすい。代わりに表自身の合計列を使って
+      住家合計 = 全壊+半壊+床上+床下+一部破損
+      人的合計 = 死者 + 負傷者小計（＋行方不明者）
+    が成り立つ並びを探し、成り立たなければ何も返さない（誤った数値を出すより、
+    その報の県全体値を持たない方を選ぶ）。県資料とは集計基準が違う点に注意
+    （県報の負傷者は軽症/中等症/重症、こちらは重傷/軽傷等）。
+    """
+    m = re.search(r"人的・住家被害等の状況[^\n]*\n", text)
+    if not m:
+        return None
+    section = text[m.end():]
+    end = re.search(r"\n\s*(（２）|\(２\)|３\s+避難所)", section)
+    if end:
+        section = section[: end.start()]
+
+    row = None
+    for line in section.split("\n"):
+        if line.strip().startswith("熊本県"):
+            row = line
+            break
+    if row is None:
+        return None
+
+    values = [parse_num(t) for t in re.findall(r"[\d,]+", normalize_digits(row))]
+    values = [v for v in values if v is not None]
+    if len(values) < 4:
+        return None
+
+    houses_total = values[-1]
+    housing_start = None
+    for k in range(1, len(values) - 1):
+        if sum(values[-1 - k : -1]) == houses_total:
+            housing_start = len(values) - 1 - k
+            break
+    if housing_start is None or housing_start < 3:
+        print(f"WARNING: 人的・住家被害表の住家内訳が合計と一致しない: {normalize_ws(row)}", file=sys.stderr)
+        return None
+
+    rest = values[:housing_start]
+    casualties_total = rest[-1]
+    deaths = rest[0]
+    injured = rest[-2]
+    if deaths + injured != casualties_total:
+        print(f"WARNING: 人的被害の内訳が合計と一致しない（行方不明者あり？）: {normalize_ws(row)}", file=sys.stderr)
+        return None
+
+    return {
+        "source": "消防庁",
+        "deaths": deaths,
+        "injured": injured,
+        "casualties_total": casualties_total,
+        "houses": houses_total,
+    }
+
+
 def parse_deaths_breakdown(text):
     idx = text.find("≪死者の内訳≫")
     if idx == -1:
@@ -347,6 +406,7 @@ def parse_file(path):
     power_current, power_max = parse_power_section(text)
     shelters, evacuees, shelters_max, evacuees_max = parse_evacuee_summary(text)
     deaths_breakdown, deaths_possible, deaths_investigating = parse_deaths_breakdown(text)
+    casualty_pref = parse_casualty_summary(text)
 
     return {
         "id": id_str,
@@ -358,6 +418,8 @@ def parse_file(path):
         "deaths_breakdown": deaths_breakdown,
         "deaths_related_possible": deaths_possible,
         "deaths_related_investigating": deaths_investigating,
+        # 消防庁ベースの熊本県全体値（県資料が無い日の時点でだけ使う）
+        "casualty_pref": casualty_pref,
         "summary": {
             "shelters": shelters,
             "evacuees": evacuees,

@@ -162,18 +162,27 @@ def main():
                 m.setdefault(name, {})["housing_started"] = units
 
         bs = b.get("summary") or {}
+        # 死者・負傷者・住家被害は同じ報の消防庁ベースの県全体値を使う。
+        # 県資料とは集計基準が違う（負傷者は重傷/軽傷等、住家は床上・床下浸水を含む）ので
+        # summary_source に出典を残し、UI側で必ず注記を出す
+        cp = b.get("casualty_pref") or {}
         snapshots.append(
             {
                 "id": b["id"],
                 "datetime": b["datetime"],
                 "bousai_only": True,
                 "sources": [{"name": b["source_name"], "url": b["source_url"]}],
+                "summary_source": {
+                    "deaths": cp.get("source"),
+                    "injured": cp.get("source"),
+                    "houses": cp.get("source"),
+                },
                 "summary": {
                     "shelters": bs.get("shelters"),
                     "evacuees": bs.get("evacuees"),
-                    "deaths": None,
-                    "injured": None,
-                    "houses": None,
+                    "deaths": cp.get("deaths"),
+                    "injured": cp.get("injured"),
+                    "houses": cp.get("houses"),
                     "water_outage": (b.get("water_outage_total") or {}).get("current"),
                 },
                 "extras": {},

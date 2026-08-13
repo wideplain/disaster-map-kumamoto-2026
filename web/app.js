@@ -1486,6 +1486,12 @@ function buildStatNote(metric, snapshot) {
   // 断水しか無く、円もランキングもほぼ空になるので、必ず理由を出す
   if (snapshot.bousai_only) notes.push(I18N.t("bousaiOnlySnapshotNote"));
 
+  // 県合計を県資料以外（消防庁ベース）から採っている指標は、集計基準が
+  // 違うぶん前後の時点と大きく食い違う。数値のすぐ下でその旨を断る
+  if (snapshot.summary_source && snapshot.summary_source[metric.key]) {
+    notes.push(I18N.t("summaryFireAgencyNote"));
+  }
+
   if (metric.key === "deaths" || metric.key === "injured") {
     const extras = buildExtrasNote(metric.key, snapshot.extras);
     if (extras) notes.push(extras);

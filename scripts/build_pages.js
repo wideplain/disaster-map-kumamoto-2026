@@ -620,6 +620,11 @@ function buildTimeseriesTable(lang) {
     html += "</tr>";
   });
   html += "</tbody></table></div>";
+  // 内閣府報だけの時点は、死者・負傷者・住家被害が消防庁ベースの県全体値なので
+  // 表の中で前後の行と基準が違う。表の直後に理由を書いておく
+  if (snapshots.some((s) => s.bousai_only)) {
+    html += `<p>${escapeHtml(I18N.t("bousaiOnlySnapshotNote"))} ${escapeHtml(I18N.t("summaryFireAgencyNote"))}</p>`;
+  }
   return html;
 }
 
