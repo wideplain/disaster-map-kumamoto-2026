@@ -1,5 +1,5 @@
 {
- "updated": "2026-08-15T21:43:35+09:00",
+ "updated": "2026-08-18T23:59:56+09:00",
  "types": [
   "bath",
   "well",
@@ -11,8 +11,8 @@
   "bath": {
    "name": "熊本県 被災者への入浴支援事業（協力公衆浴場一覧）",
    "url": "https://www.pref.kumamoto.jp/soshiki/45/244416.html",
-   "file_url": "https://www.pref.kumamoto.jp/uploaded/life/277272_871698_misc.pdf",
-   "as_of": "2026-08-15T17:00:00+09:00"
+   "file_url": "https://www.pref.kumamoto.jp/uploaded/life/277542_873538_misc.pdf",
+   "as_of": "2026-08-18T17:00:00+09:00"
   },
   "well": {
    "name": "熊本県 宇城・八代地域の防災井戸等",
@@ -23,13 +23,13 @@
   "housing": {
    "name": "熊本県 建設型応急住宅の進捗状況",
    "url": "https://www.pref.kumamoto.jp/soshiki/117/275490.html",
-   "as_of": "2026-08-13"
+   "as_of": "2026-08-17"
   },
   "ferry": {
    "name": "熊本県 フェリー「はくおう2」による入浴・休憩・宿泊支援（八代港）",
    "url": "https://www.pref.kumamoto.jp/soshiki/219/275641.html",
    "url2": "https://www.pref.kumamoto.jp/soshiki/219/276703.html",
-   "as_of": "2026-08-15"
+   "as_of": "2026-08-18"
   },
   "pet": {
    "name": "熊本県 熊本地震ペット救護本部",
@@ -127,7 +127,7 @@
    "source": "bath",
    "tel": "0968-34-2249",
    "hours": "10:00～21:00",
-   "period": "8/10～",
+   "period": "8/10～8/31",
    "closed": "毎週水曜日"
   },
   {
@@ -142,7 +142,7 @@
    "source": "bath",
    "tel": "0968-43-3083",
    "hours": "11:00～22:30",
-   "period": "7/31～",
+   "period": "7/31～8/31",
    "closed": "毎週火曜日"
   },
   {
@@ -425,6 +425,22 @@
   {
    "id": "bath-026",
    "type": "bath",
+   "name": "八代温泉 さくらの湯",
+   "muni": "八代市",
+   "address": "八代市川田町西505",
+   "lat": 32.51661,
+   "lng": 130.64853,
+   "precision": "address",
+   "source": "bath",
+   "tel": "0965-39-1000",
+   "hours": "10:00～20:00",
+   "period": "8/17～",
+   "closed": "なし",
+   "note": "10月にメンテナンスのため、定休 日あり。（日程は未定）"
+  },
+  {
+   "id": "bath-027",
+   "type": "bath",
    "name": "湯の鶴温泉保健センター ほたるの湯",
    "muni": "水俣市",
    "address": "水俣市湯出1532-2",
@@ -438,7 +454,7 @@
    "closed": "毎週月曜日"
   },
   {
-   "id": "bath-027",
+   "id": "bath-028",
    "type": "bath",
    "name": "斎藤旅館",
    "muni": "水俣市",
@@ -453,7 +469,7 @@
    "closed": "毎週月、火曜日"
   },
   {
-   "id": "bath-028",
+   "id": "bath-029",
    "type": "bath",
    "name": "Tojiya",
    "muni": "水俣市",
@@ -468,7 +484,7 @@
    "closed": "毎月第1、3火、水曜日"
   },
   {
-   "id": "bath-029",
+   "id": "bath-030",
    "type": "bath",
    "name": "昇陽館",
    "muni": "水俣市",
@@ -483,7 +499,7 @@
    "closed": "不定休"
   },
   {
-   "id": "bath-030",
+   "id": "bath-031",
    "type": "bath",
    "name": "中村温泉",
    "muni": "水俣市",
@@ -498,7 +514,7 @@
    "closed": "不定休"
   },
   {
-   "id": "bath-031",
+   "id": "bath-032",
    "type": "bath",
    "name": "湯宿 鶴水荘",
    "muni": "水俣市",
@@ -513,7 +529,7 @@
    "closed": "不定休"
   },
   {
-   "id": "bath-032",
+   "id": "bath-033",
    "type": "bath",
    "name": "白梅 湯裸楽",
    "muni": "水俣市",
@@ -528,7 +544,7 @@
    "closed": "毎月第1、3水曜日"
   },
   {
-   "id": "bath-033",
+   "id": "bath-034",
    "type": "bath",
    "name": "湯の児温泉 海と夕やけ",
    "muni": "水俣市",
@@ -543,7 +559,7 @@
    "closed": "毎週火曜日"
   },
   {
-   "id": "bath-034",
+   "id": "bath-035",
    "type": "bath",
    "name": "あさひ荘",
    "muni": "水俣市",
@@ -558,7 +574,7 @@
    "closed": "不定休"
   },
   {
-   "id": "bath-035",
+   "id": "bath-036",
    "type": "bath",
    "name": "大野温泉センター",
    "muni": "芦北町",
@@ -573,7 +589,7 @@
    "closed": "毎週火曜日 （祝日の場合は翌日）"
   },
   {
-   "id": "bath-036",
+   "id": "bath-037",
    "type": "bath",
    "name": "湯浦温泉観光センター（ヘルシーパーク芦北）",
    "muni": "芦北町",
@@ -588,7 +604,7 @@
    "closed": "毎月第2月曜日 （祝日の場合は翌日）"
   },
   {
-   "id": "bath-037",
+   "id": "bath-038",
    "type": "bath",
    "name": "湯浦温泉センター",
    "muni": "芦北町",
@@ -603,7 +619,7 @@
    "closed": "毎月第3水曜日 （祝日の場合は翌日）"
   },
   {
-   "id": "bath-038",
+   "id": "bath-039",
    "type": "bath",
    "name": "計石温泉センター",
    "muni": "芦北町",
@@ -618,7 +634,7 @@
    "closed": "毎月第2水曜日 （祝日の場合は翌日）"
   },
   {
-   "id": "bath-039",
+   "id": "bath-040",
    "type": "bath",
    "name": "ささ原温泉",
    "muni": "芦北町",
@@ -633,7 +649,7 @@
    "closed": "毎週木曜日"
   },
   {
-   "id": "bath-040",
+   "id": "bath-041",
    "type": "bath",
    "name": "一勝地交流センターかわせみ",
    "muni": "球磨村",
@@ -648,7 +664,22 @@
    "closed": "毎週水曜日"
   },
   {
-   "id": "bath-041",
+   "id": "bath-042",
+   "type": "bath",
+   "name": "さがら温泉 茶湯里（ふれあいリフレ茶湯里）",
+   "muni": "相良村",
+   "address": "球磨郡相良村大字深水2136番地",
+   "lat": 32.24396,
+   "lng": 130.8056,
+   "precision": "address",
+   "source": "bath",
+   "tel": "0966-25-8111",
+   "hours": "7:00～22:00",
+   "period": "8/7～",
+   "closed": "毎月第2火曜日"
+  },
+  {
+   "id": "bath-043",
    "type": "bath",
    "name": "旅館 ひのしま荘",
    "muni": "上天草市",
@@ -663,7 +694,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-042",
+   "id": "bath-044",
    "type": "bath",
    "name": "松泉閣 ろまん館",
    "muni": "上天草市",
@@ -678,7 +709,7 @@
    "closed": "不定休"
   },
   {
-   "id": "bath-043",
+   "id": "bath-045",
    "type": "bath",
    "name": "大洞窟の宿 湯楽亭",
    "muni": "上天草市",
@@ -693,7 +724,7 @@
    "closed": "毎週水曜日"
   },
   {
-   "id": "bath-044",
+   "id": "bath-046",
    "type": "bath",
    "name": "旅館なかしま荘",
    "muni": "上天草市",
@@ -708,7 +739,7 @@
    "closed": "8/5"
   },
   {
-   "id": "bath-045",
+   "id": "bath-047",
    "type": "bath",
    "name": "天草渚亭",
    "muni": "上天草市",
@@ -723,7 +754,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-046",
+   "id": "bath-048",
    "type": "bath",
    "name": "松島温泉ホテル マリンヒルズ",
    "muni": "上天草市",
@@ -738,7 +769,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-047",
+   "id": "bath-049",
    "type": "bath",
    "name": "旅館海の都",
    "muni": "上天草市",
@@ -753,7 +784,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-048",
+   "id": "bath-050",
    "type": "bath",
    "name": "旅館 天松",
    "muni": "上天草市",
@@ -768,7 +799,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-049",
+   "id": "bath-051",
    "type": "bath",
    "name": "松島観光ホテル岬亭",
    "muni": "上天草市",
@@ -783,7 +814,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-050",
+   "id": "bath-052",
    "type": "bath",
    "name": "ホテル竜宮",
    "muni": "上天草市",
@@ -798,7 +829,7 @@
    "closed": "8月末まで無休"
   },
   {
-   "id": "bath-051",
+   "id": "bath-053",
    "type": "bath",
    "name": "大江戸温泉物語 天草ホテル亀屋",
    "muni": "上天草市",
@@ -812,7 +843,7 @@
    "closed": "9/1～9/29 メンテナンス休館"
   },
   {
-   "id": "bath-052",
+   "id": "bath-054",
    "type": "bath",
    "name": "旅亭 藍の岬",
    "muni": "上天草市",
@@ -827,7 +858,7 @@
    "closed": "不定休"
   },
   {
-   "id": "bath-053",
+   "id": "bath-055",
    "type": "bath",
    "name": "ホテル松竜園 海星",
    "muni": "上天草市",
@@ -842,7 +873,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-054",
+   "id": "bath-056",
    "type": "bath",
    "name": "上天草市交流センタースパ・タラソ",
    "muni": "上天草市",
@@ -857,7 +888,7 @@
    "closed": "毎月第2、4火曜日"
   },
   {
-   "id": "bath-055",
+   "id": "bath-057",
    "type": "bath",
    "name": "坪井温泉 大福湯",
    "muni": "熊本市",
@@ -872,7 +903,7 @@
    "closed": "毎週火曜日"
   },
   {
-   "id": "bath-056",
+   "id": "bath-058",
    "type": "bath",
    "name": "龍の湯",
    "muni": "熊本市",
@@ -887,7 +918,7 @@
    "closed": "毎月1、5、11、15、21、25日"
   },
   {
-   "id": "bath-057",
+   "id": "bath-059",
    "type": "bath",
    "name": "世安湯",
    "muni": "熊本市",
@@ -902,7 +933,7 @@
    "closed": "毎週火、水曜日"
   },
   {
-   "id": "bath-058",
+   "id": "bath-060",
    "type": "bath",
    "name": "神水公衆浴場",
    "muni": "熊本市",
@@ -917,7 +948,7 @@
    "closed": "毎週火、木、金曜日"
   },
   {
-   "id": "bath-059",
+   "id": "bath-061",
    "type": "bath",
    "name": "湯らっくす",
    "muni": "熊本市",
@@ -932,7 +963,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-060",
+   "id": "bath-062",
    "type": "bath",
    "name": "たかの湯",
    "muni": "熊本市",
@@ -947,7 +978,7 @@
    "closed": "毎週月曜日"
   },
   {
-   "id": "bath-061",
+   "id": "bath-063",
    "type": "bath",
    "name": "つる乃湯熊本インター店",
    "muni": "熊本市",
@@ -962,7 +993,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-062",
+   "id": "bath-064",
    "type": "bath",
    "name": "ピースフル優祐悠",
    "muni": "熊本市",
@@ -977,7 +1008,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-063",
+   "id": "bath-065",
    "type": "bath",
    "name": "ばってんの湯",
    "muni": "熊本市",
@@ -992,7 +1023,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-064",
+   "id": "bath-066",
    "type": "bath",
    "name": "かもと湯",
    "muni": "熊本市",
@@ -1007,7 +1038,7 @@
    "closed": "毎週火、日曜日"
   },
   {
-   "id": "bath-065",
+   "id": "bath-067",
    "type": "bath",
    "name": "富合サウナランド",
    "muni": "熊本市",
@@ -1022,7 +1053,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-066",
+   "id": "bath-068",
    "type": "bath",
    "name": "しあわせの湯",
    "muni": "熊本市",
@@ -1037,7 +1068,7 @@
    "closed": "毎週日、月曜日"
   },
   {
-   "id": "bath-067",
+   "id": "bath-069",
    "type": "bath",
    "name": "梶尾温泉",
    "muni": "熊本市",
@@ -1052,7 +1083,7 @@
    "closed": "毎週月曜日"
   },
   {
-   "id": "bath-068",
+   "id": "bath-070",
    "type": "bath",
    "name": "松の湯",
    "muni": "熊本市",
@@ -1067,7 +1098,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-069",
+   "id": "bath-071",
    "type": "bath",
    "name": "あしはらの湯",
    "muni": "熊本市",
@@ -1082,7 +1113,7 @@
    "closed": "第3水曜日"
   },
   {
-   "id": "bath-070",
+   "id": "bath-072",
    "type": "bath",
    "name": "宝の湯",
    "muni": "熊本市",
@@ -1097,7 +1128,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-071",
+   "id": "bath-073",
    "type": "bath",
    "name": "植木温泉 湯の森ホテル",
    "muni": "熊本市",
@@ -1112,7 +1143,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-072",
+   "id": "bath-074",
    "type": "bath",
    "name": "旅館 大月苑",
    "muni": "熊本市",
@@ -1127,7 +1158,7 @@
    "closed": "8月4、5、12、18、25日"
   },
   {
-   "id": "bath-073",
+   "id": "bath-075",
    "type": "bath",
    "name": "旅館 鷹の家",
    "muni": "熊本市",
@@ -1142,7 +1173,7 @@
    "closed": "毎週水曜日"
   },
   {
-   "id": "bath-074",
+   "id": "bath-076",
    "type": "bath",
    "name": "旅館 いろは",
    "muni": "熊本市",
@@ -1157,7 +1188,7 @@
    "closed": "毎週火曜日"
   },
   {
-   "id": "bath-075",
+   "id": "bath-077",
    "type": "bath",
    "name": "旅館 平山",
    "muni": "熊本市",
@@ -1172,7 +1203,7 @@
    "closed": "8月3、17、24日"
   },
   {
-   "id": "bath-076",
+   "id": "bath-078",
    "type": "bath",
    "name": "ふろや湯湧",
    "muni": "熊本市",
@@ -1187,7 +1218,7 @@
    "closed": "8月10、25日"
   },
   {
-   "id": "bath-077",
+   "id": "bath-079",
    "type": "bath",
    "name": "植木温泉 ほてい湯",
    "muni": "熊本市",
@@ -1202,7 +1233,7 @@
    "closed": "毎週水曜日"
   },
   {
-   "id": "bath-078",
+   "id": "bath-080",
    "type": "bath",
    "name": "旅館 松乃湯",
    "muni": "熊本市",
@@ -1217,7 +1248,7 @@
    "closed": "毎週水曜日"
   },
   {
-   "id": "bath-079",
+   "id": "bath-081",
    "type": "bath",
    "name": "旅館 桐乃湯",
    "muni": "熊本市",
@@ -1434,7 +1465,7 @@
    "precision": "municipality",
    "source": "housing",
    "units": 18,
-   "structure": "木造平屋",
+   "structure": "木造・平屋",
    "start_date": "2026-08-11",
    "start_raw": "8月11日",
    "move_in": "10月上旬",
@@ -1452,7 +1483,7 @@
    "precision": "municipality",
    "source": "housing",
    "units": 17,
-   "structure": "木造平屋",
+   "structure": "木造・平屋",
    "start_date": "2026-08-18",
    "start_planned": true,
    "start_raw": "8月18日（予定）",
@@ -1461,6 +1492,24 @@
   },
   {
    "id": "housing-003",
+   "type": "housing",
+   "name": "（仮称）植柳上仮設団地",
+   "muni": "八代市",
+   "address": "",
+   "lat": 32.5075,
+   "lng": 130.60181,
+   "precision": "municipality",
+   "source": "housing",
+   "units": 34,
+   "structure": "木造・2階",
+   "start_date": "2026-08-18",
+   "start_planned": true,
+   "start_raw": "8月18日 （予定）",
+   "move_in": "10月中旬",
+   "builder": "全木協"
+  },
+  {
+   "id": "housing-004",
    "type": "housing",
    "name": "(仮称)宇城市当尾仮設団地",
    "muni": "宇城市",
@@ -1478,7 +1527,7 @@
    "note": "基礎工事"
   },
   {
-   "id": "housing-004",
+   "id": "housing-005",
    "type": "housing",
    "name": "(仮称)宇城市小川仮設団地",
    "muni": "宇城市",
@@ -1496,7 +1545,7 @@
    "note": "既存談話室利用予定 基礎工事"
   },
   {
-   "id": "housing-005",
+   "id": "housing-006",
    "type": "housing",
    "name": "(仮称)宇城市豊野仮設団地",
    "muni": "宇城市",
@@ -1514,7 +1563,7 @@
    "note": "基礎工事"
   },
   {
-   "id": "housing-006",
+   "id": "housing-007",
    "type": "housing",
    "name": "(仮称)氷川町吉本仮設団地",
    "muni": "氷川町",
@@ -1532,7 +1581,7 @@
    "note": "談話室検討中 本体工事"
   },
   {
-   "id": "housing-007",
+   "id": "housing-008",
    "type": "housing",
    "name": "（仮称）宮原防災公園仮設団地",
    "muni": "氷川町",
@@ -1550,7 +1599,7 @@
    "note": "基礎工事"
   },
   {
-   "id": "housing-008",
+   "id": "housing-009",
    "type": "housing",
    "name": "（仮称）鹿島仮設団地",
    "muni": "氷川町",
@@ -1568,7 +1617,7 @@
    "note": "基礎工事"
   },
   {
-   "id": "housing-009",
+   "id": "housing-010",
    "type": "housing",
    "name": "（仮称）新村仮設団地",
    "muni": "氷川町",
@@ -1583,10 +1632,29 @@
    "start_planned": true,
    "start_raw": "8月13日 （予定）",
    "move_in": "10月上旬",
+   "builder": "プレ協",
+   "note": "基礎工事"
+  },
+  {
+   "id": "housing-011",
+   "type": "housing",
+   "name": "（仮称）乙女仮設団地",
+   "muni": "甲佐町",
+   "address": "",
+   "lat": 32.65117,
+   "lng": 130.81123,
+   "precision": "municipality",
+   "source": "housing",
+   "units": 20,
+   "structure": "軽量鉄骨造・平屋",
+   "start_date": "2026-08-18",
+   "start_planned": true,
+   "start_raw": "8月18日 （予定）",
+   "move_in": "10月上旬",
    "builder": "プレ協"
   },
   {
-   "id": "housing-010",
+   "id": "housing-012",
    "type": "housing",
    "name": "（仮称）中央庁舎復興団地",
    "muni": "美里町",
@@ -1596,7 +1664,7 @@
    "precision": "municipality",
    "source": "housing",
    "units": 12,
-   "structure": "木造平屋",
+   "structure": "木造・平屋",
    "start_date": "2026-08-09",
    "start_raw": "8月9日",
    "move_in": "10月上旬",
@@ -1613,7 +1681,7 @@
    "lng": 130.54637,
    "precision": "address",
    "source": "ferry",
-   "note": "8月16日（日曜日）以降のはくおう2による入浴・休憩支援について / （8/18（火曜日）より）防衛省によるフェリー「はくおう2」による宿泊支援を始めます。",
+   "note": "8月19日（水曜日）のはくおう2による入浴・休憩支援について / （8/18（火曜日）より）防衛省によるフェリー「はくおう2」による宿泊支援を始めます。",
    "hours": "日により変動（要事前予約）"
   },
   {
@@ -1636,7 +1704,7 @@
    "muni": "八代市",
    "name": "(仮称)毘舎丸仮設団地",
    "units": 18,
-   "structure": "木造平屋",
+   "structure": "木造・平屋",
    "hall": "1棟",
    "start_date": "2026-08-11",
    "start_planned": false,
@@ -1649,13 +1717,26 @@
    "muni": "八代市",
    "name": "(仮称)鏡町仮設団地",
    "units": 17,
-   "structure": "木造平屋",
+   "structure": "木造・平屋",
    "hall": "1棟",
    "start_date": "2026-08-18",
    "start_planned": true,
    "start_raw": "8月18日（予定）",
    "move_in": "10月中旬",
    "builder": "優住協",
+   "note": ""
+  },
+  {
+   "muni": "八代市",
+   "name": "（仮称）植柳上仮設団地",
+   "units": 34,
+   "structure": "木造・2階",
+   "hall": "1棟",
+   "start_date": "2026-08-18",
+   "start_planned": true,
+   "start_raw": "8月18日 （予定）",
+   "move_in": "10月中旬",
+   "builder": "全木協",
    "note": ""
   },
   {
@@ -1747,13 +1828,26 @@
    "start_raw": "8月13日 （予定）",
    "move_in": "10月上旬",
    "builder": "プレ協",
+   "note": "基礎工事"
+  },
+  {
+   "muni": "甲佐町",
+   "name": "（仮称）乙女仮設団地",
+   "units": 20,
+   "structure": "軽量鉄骨造・平屋",
+   "hall": "1棟",
+   "start_date": "2026-08-18",
+   "start_planned": true,
+   "start_raw": "8月18日 （予定）",
+   "move_in": "10月上旬",
+   "builder": "プレ協",
    "note": ""
   },
   {
    "muni": "美里町",
    "name": "（仮称）中央庁舎復興団地",
    "units": 12,
-   "structure": "木造平屋",
+   "structure": "木造・平屋",
    "hall": "－",
    "start_date": "2026-08-09",
    "start_planned": false,
