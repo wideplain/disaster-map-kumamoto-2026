@@ -1,5 +1,5 @@
 {
- "updated": "2026-08-18T23:59:56+09:00",
+ "updated": "2026-08-19T21:26:14+09:00",
  "types": [
   "bath",
   "well",
@@ -11,8 +11,8 @@
   "bath": {
    "name": "熊本県 被災者への入浴支援事業（協力公衆浴場一覧）",
    "url": "https://www.pref.kumamoto.jp/soshiki/45/244416.html",
-   "file_url": "https://www.pref.kumamoto.jp/uploaded/life/277542_873538_misc.pdf",
-   "as_of": "2026-08-18T17:00:00+09:00"
+   "file_url": "https://www.pref.kumamoto.jp/uploaded/life/277674_874605_misc.pdf",
+   "as_of": "2026-08-19T17:00:00+09:00"
   },
   "well": {
    "name": "熊本県 宇城・八代地域の防災井戸等",
@@ -29,7 +29,7 @@
    "name": "熊本県 フェリー「はくおう2」による入浴・休憩・宿泊支援（八代港）",
    "url": "https://www.pref.kumamoto.jp/soshiki/219/275641.html",
    "url2": "https://www.pref.kumamoto.jp/soshiki/219/276703.html",
-   "as_of": "2026-08-18"
+   "as_of": "2026-08-19"
   },
   "pet": {
    "name": "熊本県 熊本地震ペット救護本部",
@@ -172,7 +172,7 @@
    "source": "bath",
    "tel": "0968-43-7811",
    "hours": "10:00～21:00 （最終受付20:00）",
-   "period": "8/1～",
+   "period": "8/1～8/31",
    "closed": "毎週火曜日"
   },
   {
@@ -187,7 +187,7 @@
    "source": "bath",
    "tel": "0968-44-0887",
    "hours": "10:00～21:30",
-   "period": "8/1～",
+   "period": "8/1～8/31",
    "closed": "毎週火曜日"
   },
   {
@@ -202,7 +202,7 @@
    "source": "bath",
    "tel": "0968-44-5888",
    "hours": "9:30～21:30",
-   "period": "7/31～",
+   "period": "7/31～8/31",
    "closed": "毎週木曜日"
   },
   {
@@ -217,7 +217,7 @@
    "source": "bath",
    "tel": "0968-43-8821",
    "hours": "9:00～21:00",
-   "period": "8/6～",
+   "period": "8/6～8/31",
    "closed": "不定休",
    "note": "平日メンテナンスあり。要問合せ"
   },
@@ -734,7 +734,7 @@
    "precision": "address",
    "source": "bath",
    "tel": "0969-56-0542",
-   "hours": "14:00～22:00",
+   "hours": "16:00～22:00",
    "period": "7/31～",
    "closed": "8/5"
   },
@@ -890,6 +890,112 @@
   {
    "id": "bath-057",
    "type": "bath",
+   "name": "栖本温泉センター 河童ロマン館",
+   "muni": "天草市",
+   "address": "天草市栖本町馬場3725-1",
+   "lat": 32.41748,
+   "lng": 130.26466,
+   "precision": "address",
+   "source": "bath",
+   "tel": "0969-54-5526",
+   "hours": "11:00～20:00",
+   "period": "8/19～",
+   "closed": "毎週火曜日"
+  },
+  {
+   "id": "bath-058",
+   "type": "bath",
+   "name": "牛深温泉センターやすらぎの湯",
+   "muni": "天草市",
+   "address": "天草市久玉町2193番地",
+   "lat": 32.23134,
+   "lng": 130.04668,
+   "precision": "address",
+   "source": "bath",
+   "tel": "0969-72-6666",
+   "hours": "10:00～21:00",
+   "period": "8/19～",
+   "closed": "毎月第3火曜日"
+  },
+  {
+   "id": "bath-059",
+   "type": "bath",
+   "name": "下田温泉センター 白鷺館",
+   "muni": "天草市",
+   "address": "天草市天草町下田北1290-1",
+   "lat": 32.41818,
+   "lng": 130.02229,
+   "precision": "address",
+   "source": "bath",
+   "tel": "0969-42-3375",
+   "hours": "9:00～21:00",
+   "period": "8/19～",
+   "closed": "毎月第4木曜日"
+  },
+  {
+   "id": "bath-060",
+   "type": "bath",
+   "name": "有明温泉センター さざ波の湯",
+   "muni": "天草市",
+   "address": "天草市有明町上津浦1955",
+   "lat": 32.48545,
+   "lng": 130.30826,
+   "precision": "address",
+   "source": "bath",
+   "tel": "0969-53-1126",
+   "hours": "13:00～21:00",
+   "period": "8/19～",
+   "closed": "毎週水曜日"
+  },
+  {
+   "id": "bath-061",
+   "type": "bath",
+   "name": "総合交流ターミナル施設 ユメール",
+   "muni": "天草市",
+   "address": "天草市五和町二江547",
+   "lat": 32.53929,
+   "lng": 130.13489,
+   "precision": "address",
+   "source": "bath",
+   "tel": "0969-26-4011",
+   "hours": "11:00～21:00",
+   "period": "8/19～",
+   "closed": "毎週火曜日、毎月第3水曜日"
+  },
+  {
+   "id": "bath-062",
+   "type": "bath",
+   "name": "天然温泉ペルラの湯舟",
+   "muni": "天草市",
+   "address": "天草市本渡町広瀬996番地",
+   "lat": 32.466,
+   "lng": 130.20264,
+   "precision": "address",
+   "source": "bath",
+   "tel": "0969-23-2626",
+   "hours": "6:00～8:30 14:00～21:30",
+   "period": "8/19～",
+   "closed": "なし",
+   "note": "第3水曜日は16時営業開始"
+  },
+  {
+   "id": "bath-063",
+   "type": "bath",
+   "name": "天草ゆ楽園",
+   "muni": "天草市",
+   "address": "天草市進和町碇石81-8",
+   "lat": 32.45892,
+   "lng": 130.19345,
+   "precision": "address",
+   "source": "bath",
+   "tel": "0969-46-3926",
+   "hours": "11:00～22:00",
+   "period": "8/19～",
+   "closed": "毎週火曜日"
+  },
+  {
+   "id": "bath-064",
+   "type": "bath",
    "name": "坪井温泉 大福湯",
    "muni": "熊本市",
    "address": "熊本市中央区坪井2丁目5-28",
@@ -903,7 +1009,7 @@
    "closed": "毎週火曜日"
   },
   {
-   "id": "bath-058",
+   "id": "bath-065",
    "type": "bath",
    "name": "龍の湯",
    "muni": "熊本市",
@@ -918,7 +1024,7 @@
    "closed": "毎月1、5、11、15、21、25日"
   },
   {
-   "id": "bath-059",
+   "id": "bath-066",
    "type": "bath",
    "name": "世安湯",
    "muni": "熊本市",
@@ -933,7 +1039,7 @@
    "closed": "毎週火、水曜日"
   },
   {
-   "id": "bath-060",
+   "id": "bath-067",
    "type": "bath",
    "name": "神水公衆浴場",
    "muni": "熊本市",
@@ -948,7 +1054,7 @@
    "closed": "毎週火、木、金曜日"
   },
   {
-   "id": "bath-061",
+   "id": "bath-068",
    "type": "bath",
    "name": "湯らっくす",
    "muni": "熊本市",
@@ -963,7 +1069,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-062",
+   "id": "bath-069",
    "type": "bath",
    "name": "たかの湯",
    "muni": "熊本市",
@@ -978,7 +1084,7 @@
    "closed": "毎週月曜日"
   },
   {
-   "id": "bath-063",
+   "id": "bath-070",
    "type": "bath",
    "name": "つる乃湯熊本インター店",
    "muni": "熊本市",
@@ -993,7 +1099,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-064",
+   "id": "bath-071",
    "type": "bath",
    "name": "ピースフル優祐悠",
    "muni": "熊本市",
@@ -1008,7 +1114,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-065",
+   "id": "bath-072",
    "type": "bath",
    "name": "ばってんの湯",
    "muni": "熊本市",
@@ -1023,7 +1129,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-066",
+   "id": "bath-073",
    "type": "bath",
    "name": "かもと湯",
    "muni": "熊本市",
@@ -1038,7 +1144,7 @@
    "closed": "毎週火、日曜日"
   },
   {
-   "id": "bath-067",
+   "id": "bath-074",
    "type": "bath",
    "name": "富合サウナランド",
    "muni": "熊本市",
@@ -1053,7 +1159,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-068",
+   "id": "bath-075",
    "type": "bath",
    "name": "しあわせの湯",
    "muni": "熊本市",
@@ -1068,7 +1174,7 @@
    "closed": "毎週日、月曜日"
   },
   {
-   "id": "bath-069",
+   "id": "bath-076",
    "type": "bath",
    "name": "梶尾温泉",
    "muni": "熊本市",
@@ -1083,7 +1189,7 @@
    "closed": "毎週月曜日"
   },
   {
-   "id": "bath-070",
+   "id": "bath-077",
    "type": "bath",
    "name": "松の湯",
    "muni": "熊本市",
@@ -1098,7 +1204,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-071",
+   "id": "bath-078",
    "type": "bath",
    "name": "あしはらの湯",
    "muni": "熊本市",
@@ -1113,7 +1219,7 @@
    "closed": "第3水曜日"
   },
   {
-   "id": "bath-072",
+   "id": "bath-079",
    "type": "bath",
    "name": "宝の湯",
    "muni": "熊本市",
@@ -1128,7 +1234,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-073",
+   "id": "bath-080",
    "type": "bath",
    "name": "植木温泉 湯の森ホテル",
    "muni": "熊本市",
@@ -1143,7 +1249,7 @@
    "closed": "なし"
   },
   {
-   "id": "bath-074",
+   "id": "bath-081",
    "type": "bath",
    "name": "旅館 大月苑",
    "muni": "熊本市",
@@ -1158,7 +1264,7 @@
    "closed": "8月4、5、12、18、25日"
   },
   {
-   "id": "bath-075",
+   "id": "bath-082",
    "type": "bath",
    "name": "旅館 鷹の家",
    "muni": "熊本市",
@@ -1173,7 +1279,7 @@
    "closed": "毎週水曜日"
   },
   {
-   "id": "bath-076",
+   "id": "bath-083",
    "type": "bath",
    "name": "旅館 いろは",
    "muni": "熊本市",
@@ -1188,7 +1294,7 @@
    "closed": "毎週火曜日"
   },
   {
-   "id": "bath-077",
+   "id": "bath-084",
    "type": "bath",
    "name": "旅館 平山",
    "muni": "熊本市",
@@ -1203,7 +1309,7 @@
    "closed": "8月3、17、24日"
   },
   {
-   "id": "bath-078",
+   "id": "bath-085",
    "type": "bath",
    "name": "ふろや湯湧",
    "muni": "熊本市",
@@ -1218,7 +1324,7 @@
    "closed": "8月10、25日"
   },
   {
-   "id": "bath-079",
+   "id": "bath-086",
    "type": "bath",
    "name": "植木温泉 ほてい湯",
    "muni": "熊本市",
@@ -1233,7 +1339,7 @@
    "closed": "毎週水曜日"
   },
   {
-   "id": "bath-080",
+   "id": "bath-087",
    "type": "bath",
    "name": "旅館 松乃湯",
    "muni": "熊本市",
@@ -1248,7 +1354,7 @@
    "closed": "毎週水曜日"
   },
   {
-   "id": "bath-081",
+   "id": "bath-088",
    "type": "bath",
    "name": "旅館 桐乃湯",
    "muni": "熊本市",
@@ -1681,7 +1787,7 @@
    "lng": 130.54637,
    "precision": "address",
    "source": "ferry",
-   "note": "8月19日（水曜日）のはくおう2による入浴・休憩支援について / （8/18（火曜日）より）防衛省によるフェリー「はくおう2」による宿泊支援を始めます。",
+   "note": "8月20日（木曜日）のはくおう2による入浴・休憩支援について / （8/22（土曜日）より）防衛省によるフェリー「はくおう2」による宿泊支援を始めます。",
    "hours": "日により変動（要事前予約）"
   },
   {
