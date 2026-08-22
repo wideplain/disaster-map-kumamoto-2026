@@ -76,8 +76,14 @@ def find_header_datetime(text):
     return None
 
 
+# 「①水道」「②電力」のように見出しの丸数字は固定ではない。ある報だけ
+# 間に別の見出しが挟まって「②水道」「③電力」のようにずれることがあるため、
+# 丸数字そのものではなく見出し語（水道／電力）で節の境界を探す
+CIRCLED_NUM_RE = r"[①②③④⑤⑥⑦⑧⑨⑩⑪⑫]"
+
+
 def parse_water_section(text):
-    m = re.search(r"①水道.*?②電力", text, re.S)
+    m = re.search(CIRCLED_NUM_RE + r"水道.*?" + CIRCLED_NUM_RE + r"電力", text, re.S)
     if not m:
         return {}, {"max": None, "current": None}
     sec = m.group(0)
@@ -182,7 +188,7 @@ POWER_RESOLVED_RE = re.compile(r"電力について.{0,200}?停電が発生し�
 
 
 def parse_power_section(text):
-    m = re.search(r"②電力.*?③", text, re.S)
+    m = re.search(CIRCLED_NUM_RE + r"電力.*?" + CIRCLED_NUM_RE, text, re.S)
     if not m:
         return None, None
     sec = m.group(0)

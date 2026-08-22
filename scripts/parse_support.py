@@ -348,6 +348,41 @@ HOUSING_HEADER_KEYS = [
 ]
 
 
+HOUSING_BULLET_RE = re.compile(
+    r"令和(\d+)年(\d{1,2})月(\d{1,2})日[、,]\s*([^。]+?)において[^。]*?着手(しました|する予定です|予定です)"
+)
+
+
+def parse_housing_bullets(page_html):
+    """ページ冒頭の「新着概要」から (着手日, 市町村, 着手済みか) を拾う。
+
+    県は8/21時点版で団地ごとの表をページから削除し、箇条書きと報道資料PDFだけにした。
+    表がある間も「（予定）」のまま着手済みになった団地を確定させるのに使う。
+    """
+    text = strip_tags(page_html)
+    out = []
+    for m in HOUSING_BULLET_RE.finditer(text):
+        year = 2018 + int(m.group(1))
+        date = f"{year:04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+        munis = [x for x in re.split(r"及び|、|，|,", m.group(4)) if x.endswith(("市", "町", "村"))]
+        out.append({"date": date, "munis": munis, "started": m.group(5) == "しました"})
+    return out
+
+
+def apply_housing_bullets(housing, bullets):
+    """箇条書きで「着手しました」と書かれた (市町村, 日付) の団地を着手済みにする。
+
+    逆向き（着手済み→予定）には決して倒さない。件数と戸数は表由来のまま。
+    """
+    started = {(b["date"], muni) for b in bullets if b["started"] for muni in b["munis"]}
+    changed = 0
+    for h in housing:
+        if h.get("start_planned") and (h.get("start_date"), h.get("muni")) in started:
+            h["start_planned"] = False
+            changed += 1
+    return changed
+
+
 def parse_housing(page_html, updated):
     tables = re.findall(r"<table.*?</table>", page_html, re.S)
     if not tables:
@@ -393,11 +428,174 @@ def parse_housing(page_html, updated):
 
 
 # ---------------------------------------------------------------------------
+# 応急住宅・報道資料PDF（進捗表がページから消えた後の代替データ源）
+#
+# 2026-08-21、県は団地ごとの表をページ本体から削除し、報道資料PDFと箇条書き
+# だけが残る形になった。ただし各報道資料の1ページ目に「新たに工事着手する
+# 仮設住宅団地の概要」という、その回に新規着手した団地だけのミニ表がある。
+# これを新着分の唯一のソースとして使い、前回までの一覧に無い団地だけを追加する
+# （名称の完全一致で重複判定するので、既知の団地を二重に足すことはない）。
+# ---------------------------------------------------------------------------
+
+HOUSING_REPORT_LABELS = ["団地名称", "所在地", "建設戸数", "住宅の構造・階数", "施工者", "入居予定時期", "備考"]
+
+
+def find_housing_report_links(page_html):
+    """ページ内の報道資料PDFリンクを新しい順で返す [(url, label), ...]。"""
+    links = []
+    for m in re.finditer(r'<a[^>]+href="([^"]+\.pdf)"[^>]*>(.*?)</a>', page_html, re.S):
+        label = unicodedata.normalize("NFKC", strip_tags(m.group(2)))
+        if re.match(r"^\d{6}【", label):  # 例: 260821【八代市、宇土市、美里町】3団地着手
+            href = m.group(1)
+            links.append((href if href.startswith("http") else BASE + href, label))
+    return links
+
+
+def parse_housing_report_pdf(pdf_path):
+    """報道資料PDFの「新たに工事着手する仮設住宅団地の概要」表を読む。
+
+    pdftotext -layout の空白幅で列を切る（bath等と違い、この表は列数が
+    毎回2〜3程度と少なく、視覚的なセル結合も無いため座標計算までは不要）。
+    """
+    txt_path = pdf_path.with_suffix(".txt")
+    subprocess.run(["pdftotext", "-layout", str(pdf_path), str(txt_path)], check=True)
+    text = txt_path.read_text(encoding="utf-8", errors="replace")
+    m = re.search(r"新たに工事着手する仮設住宅団地の概要(.*?)(?=※|【参|$)", text, re.S)
+    if not m:
+        return [], text
+    section = m.group(1)
+
+    cols = {label: [] for label in HOUSING_REPORT_LABELS}
+    for line in section.split("\n"):
+        s2 = line.strip()
+        for label in HOUSING_REPORT_LABELS:
+            if s2.startswith(label):
+                rest = s2[len(label):]
+                cols[label].extend(p.strip() for p in re.split(r"\s{2,}", rest) if p.strip())
+                break
+
+    n = len(cols["団地名称"])
+    if n == 0:
+        return [], text
+    for label in HOUSING_REPORT_LABELS:
+        cols[label] = (cols[label] + [""] * n)[:n]  # 備考欄などは写真キャプションの巻き込みで余りうる
+
+    out = []
+    for i in range(n):
+        units = re.search(r"(\d+)\s*戸", cols["建設戸数"][i])
+        out.append(
+            {
+                "name": re.sub(r"\s+", "", cols["団地名称"][i]),
+                "address": cols["所在地"][i],
+                "units": int(units.group(1)) if units else None,
+                "structure": cols["住宅の構造・階数"][i],
+                "builder": cols["施工者"][i],
+                "move_in": cols["入居予定時期"][i],
+                "note": cols["備考"][i],
+            }
+        )
+    return out, text
+
+
+def report_start_date(report_text, bullets):
+    """報道資料の文面（「明日２２日（土）に…整備に着手することとなりました」）から
+    着手日を出し、当日の「新着概要」箇条書き（同じ日付のもの）で
+    着手済み/予定を確認する。箇条書きに該当日が無い場合（過去の号でも
+    ページの新着概要は直近数件しか載らない）は、日付が今日以前なら着手済みとみなす。
+
+    pdftotext -layout は文中で行を折り返すため、"着手すること" と
+    "となりました" の間に改行が挟まることがある。空白を全部削ってから
+    照合することで折り返し位置に依存しないようにする。
+    """
+    flat = re.sub(r"\s+", "", report_text)
+    issue_m = re.search(r"令和(\d+)年[（(]\d+年[）)](\d{1,2})月(\d{1,2})日", flat)
+    if not issue_m:
+        return None, False
+    # 文書冒頭の発行日（「令和８年（２０２６年）８月２１日」）にも「…日」が含まれ、
+    # 素直に検索すると着手日ではなくこちらの日付を先に拾ってしまう。
+    # 本文の書き出し（本文中で繰り返される「令和８年熊本地震」）以降だけを対象にする
+    body_start = flat.find("令和", flat.find("令和") + 1)
+    body = flat[body_start:] if body_start != -1 else flat
+    action_m = re.search(r"(\d{1,2})日[^。]*?着手(することとなりました|する予定です|予定です)", body)
+    if not action_m:
+        return None, False
+    year = 2018 + int(issue_m.group(1))
+    month = int(issue_m.group(2))
+    day = int(action_m.group(1))
+    if day < int(issue_m.group(3)):  # 月末をまたいで「翌月1日」等になる場合
+        month += 1
+        if month > 12:
+            month, year = 1, year + 1
+    date = f"{year:04d}-{month:02d}-{day:02d}"
+    bullet = next((b for b in bullets if b["date"] == date), None)
+    started = bullet["started"] if bullet is not None else date <= datetime.now(JST).date().isoformat()
+    return date, started
+
+
+_MUNI_NAMES_CACHE = None
+
+
+def load_muni_names():
+    global _MUNI_NAMES_CACHE
+    if _MUNI_NAMES_CACHE is None:
+        with open(MUNI_PATH, encoding="utf-8") as f:
+            _MUNI_NAMES_CACHE = sorted(json.load(f).keys(), key=len, reverse=True)
+    return _MUNI_NAMES_CACHE
+
+
+def fetch_new_housing_from_reports(page, known_names, bullets, offline):
+    """既知の団地名に無い団地を、新しい報道資料から順に探して追加分だけ返す。"""
+    new_entries = []
+    for url, label in find_housing_report_links(page):
+        key_m = re.search(r"attachment/(\d+)\.pdf", url)
+        key = key_m.group(1) if key_m else re.sub(r"\W+", "_", label)
+        pdf_path = get_raw(f"housing_report_{key}", url, "pdf", offline)
+        teams, text = parse_housing_report_pdf(pdf_path)
+        date, started = report_start_date(text, bullets)
+        for t in teams:
+            norm_name = unicodedata.normalize("NFKC", t["name"])
+            if norm_name in known_names:
+                continue
+            muni = detect_muni(t["address"], load_muni_names())
+            if not muni:
+                print(f"    応急住宅（報道資料由来）の市町村を判定できずスキップ: {t['name']} / {t['address']}", file=sys.stderr)
+                continue
+            start_raw = ""
+            if date:
+                start_raw = f"{int(date[5:7])}月{int(date[8:10])}日" + ("（予定）" if not started else "")
+            new_entries.append(
+                {
+                    "muni": muni,
+                    "name": t["name"],
+                    "units": t["units"],
+                    "structure": t["structure"],
+                    "hall": "",
+                    "start_date": date,
+                    "start_planned": (not started) if date else True,
+                    "start_raw": start_raw,
+                    "move_in": t["move_in"],
+                    "builder": t["builder"],
+                    "note": t["note"],
+                }
+            )
+            known_names.add(norm_name)
+    return new_entries
+
+
+# ---------------------------------------------------------------------------
 # ジオコーディング（国土地理院 住所検索API）
 # ---------------------------------------------------------------------------
 
 GSI_API = "https://msearch.gsi.go.jp/address-search/AddressSearch"
 KUMAMOTO_BBOX = (32.0, 33.3, 129.9, 131.4)  # lat_min, lat_max, lng_min, lng_max
+
+
+def load_previous_housing():
+    """前回生成した support_sites.json の housing をそのまま返す（無ければ空）。"""
+    if not OUT_PATH.exists():
+        return []
+    with open(OUT_PATH, encoding="utf-8") as f:
+        return json.load(f).get("housing") or []
 
 
 def load_cache():
@@ -469,6 +667,10 @@ def geocode(address, muni, muni_data, cache, offline):
 # 市町村の推定
 # ---------------------------------------------------------------------------
 
+# 協力公衆浴場一覧の熊本市の節は市名を省いて「南区城南町…」と書かれる行がある
+KUMAMOTO_WARDS = ("中央区", "東区", "西区", "南区", "北区")
+
+
 def detect_muni(address, muni_names):
     """住所文字列に現れる市町村名（最も手前・同位置なら最長）を返す。"""
     best = None
@@ -478,7 +680,12 @@ def detect_muni(address, muni_names):
             continue
         if best is None or idx < best[0] or (idx == best[0] and len(name) > len(best[1])):
             best = (idx, name)
-    return best[1] if best else None
+    if best:
+        return best[1]
+    # 市名が無く区名から始まる住所は熊本市（政令市の区は熊本市にしか無い）
+    if address.startswith(KUMAMOTO_WARDS):
+        return "熊本市"
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -581,11 +788,36 @@ def main():
     print("== 建設型応急住宅 ==")
     page = page_text(get_raw("housing", PAGES["housing"]["url"], "html", args.offline))
     housing_updated = page_updated(page)
-    m = re.search(r"整備状況\s*[（(]令和(\d+)年(\d{1,2})月(\d{1,2})\s*日時点", strip_tags(page))
+    m = re.search(r"[（(]令和(\d+)年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日時点", strip_tags(page))
     housing_as_of = (
         f"{2018 + int(m.group(1)):04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}" if m else housing_updated
     )
     housing = parse_housing(page, housing_as_of or housing_updated)
+    if not housing:
+        # 2026-08-21以降、県は団地ごとの表をページ本体から削除した。
+        # 前回の一覧を引き継ぎ、以後は報道資料PDFの新着分だけを足していく
+        previous = load_previous_housing()
+        if previous:
+            housing = previous
+            print(
+                f"    警告: 進捗表がページから消えたため、前回の {len(housing)} 団地を引き継ぎます"
+                f"（報道資料PDFのみになった可能性）",
+                file=sys.stderr,
+            )
+        else:
+            print("    警告: 進捗表が読めず、引き継げる前回データもありません", file=sys.stderr)
+
+    bullets = parse_housing_bullets(page)
+    confirmed = apply_housing_bullets(housing, bullets)
+    if confirmed:
+        print(f"  着手確認（新着概要より）: {confirmed} 団地の「予定」を外しました")
+
+    known_names = {unicodedata.normalize("NFKC", h["name"]) for h in housing}
+    new_from_reports = fetch_new_housing_from_reports(page, known_names, bullets, args.offline)
+    if new_from_reports:
+        print(f"  報道資料から新規団地を追加: {len(new_from_reports)} 団地（{[h['name'] for h in new_from_reports]}）")
+        housing.extend(new_from_reports)
+
     sources["housing"] = {
         "name": PAGES["housing"]["name"],
         "url": PAGES["housing"]["url"],

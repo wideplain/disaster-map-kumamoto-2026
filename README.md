@@ -97,8 +97,12 @@ SEO用の言語別ページ・data.html・sitemap.xml を手元で見たいと�
   - [被災者への入浴支援事業](https://www.pref.kumamoto.jp/soshiki/45/244416.html) の「協力公衆浴場一覧」PDF（施設名・住所・電話・営業時間・協力期間・定休日）。
     PDFはExcel出力で、営業時間が2段書きのセルを含むため `pdftotext -bbox-layout` のワード座標で列を切り分けている。
   - [宇城・八代地域の防災井戸等](https://www.pref.kumamoto.jp/soshiki/49/275636.html) の「利用可能な井戸水等」PDF（生活用水・飲用不可）。
-  - [建設型応急住宅の進捗状況](https://www.pref.kumamoto.jp/soshiki/117/275490.html) の表（団地名・戸数・構造・着手日・入居予定・施工者）。
+  - [建設型応急住宅の進捗状況](https://www.pref.kumamoto.jp/soshiki/117/275490.html)（団地名・戸数・構造・着手日・入居予定・施工者）。
     着手日から各時点の**着工済み戸数**を組み立てて数値マップの指標「応急住宅 着工戸数」にしている（「（予定）」の団地は着手が確認できるまで数えない）。
+    2026-08-21、県はページ本体の団地ごとの表を削除し、報道資料PDFと「新着概要」の箇条書きだけが残る形に変わった。
+    以後は前回までの一覧を引き継ぎ、（1）新着概要の文面から「着手しました／する予定です」を読んで既存団地の「予定」を確定させ、
+    （2）各報道資料PDF内の「新たに工事着手する仮設住宅団地の概要」ミニ表から、まだ一覧に無い団地だけを団地名の完全一致
+    （NFKC正規化で全角/半角括弧の表記ゆれを吸収）で追加する。表が復活しない限りこの経路が唯一の更新手段になる。
   - フェリー「はくおう2」の[入浴・休憩](https://www.pref.kumamoto.jp/soshiki/219/275641.html)／[宿泊支援](https://www.pref.kumamoto.jp/soshiki/219/276703.html)（八代港）、[ペット救護本部](https://www.pref.kumamoto.jp/soshiki/30/275568.html)。
   - 住所は[国土地理院の住所検索API](https://msearch.gsi.go.jp/address-search/AddressSearch)でジオコーディングし、結果を `data/support_geocode.json` にキャッシュする。
     住所が無い応急住宅団地・ペット救護窓口は市町村の代表点に置き、`precision` で区別してUIに「おおよその位置」と明記する。
