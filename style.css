@@ -1,0 +1,1910 @@
+/* ===== design tokens ===== */
+:root {
+  --c-evacuees: #1baf7a;
+  --c-shelters: #008300;
+  --c-deaths: #e34948;
+  --c-injured: #e87ba4;
+  --c-houses: #eb6834;
+  --c-water_outage: #2a78d6;
+  --c-water_stations: #4a3aa7;
+  --c-power_outage: #eda100;
+
+  --ink: #0b0b0b;
+  --ink-sub: #52514e;
+  --ink-thin: #898781;
+  --line: #e1e0d9;
+  --surface: #fcfcfb;
+
+  --up: #c23b34;
+  --down: #1a8f5a;
+  --flat: #52514e;
+
+  /* .timeline-bar の固定高さ。JSは一切書き込まない（実測してこの変数を
+     更新する仕組みは、実機で「バーが大きくうねる」不具合の原因になったため
+     完全に撤去した）。内訳は .timeline-bar 内の2行がどちらも常に1行で
+     収まる設計になっている前提の計算値:
+       padding-top 8 + row1(.timeline-top) 44
+       + gap 6 + row2(.timeline-controls) 68
+       + padding-bottom 8 + border-top 1 = 135px
+     （row1の44pxは.info-toggleのmin-height、row2の68pxは
+     .slider-area input[type=range]のheight:44px+padding:12px*2、
+     どちらも内容依存ではなくCSSの固定値なので変動しない）。
+     ブラウザ間のフォントメトリクス差を吸収する安全マージンを乗せて140pxとする。
+     デスクトップ・モバイルで内容の行数は変わらない（.timeline-topは
+     flex-wrap:nowrapで折り返さない）ため、ブレークポイント別の値は持たない */
+  --bar-h: 140px;
+  --header-h: 56px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+
+  /* フォントサイズはすべてremベース（ブラウザの文字サイズ設定に追随）。
+     本文・ラベルは13px相当を下限、主要な数値は16px相当を下限にする */
+  --fs-xs: 0.8125rem;  /* 13px: 本文・ラベルの下限 */
+  --fs-sm: 0.875rem;   /* 14px */
+  --fs-base: 0.9375rem;/* 15px */
+  --fs-md: 1rem;       /* 16px: 重要な数値の下限 */
+  --fs-lg: 1.125rem;   /* 18px */
+  --fs-xl: 1.375rem;   /* 22px */
+  --fs-xxl: 1.75rem;   /* 28px */
+}
+
+* { box-sizing: border-box; }
+
+/* html は明示的に overflow:hidden にする。body だけを overflow:hidden にしても
+   （html側が既定のvisibleのままだと）ページ全体の縦スクロールを止めきれない
+   ケースがあり、地図パン中に画面外へ出たオーバーレイ要素がscrollbarの
+   出現/消滅を誘発 → ページ幅が変わる → 折り返し/地図リサイズが起きる →
+   はみ出しが直る → scrollbar消滅 → 幅が戻る……という振動（フッターの
+   「うねうね」やページ幅のがたつき）の実機報告につながっていた。
+   scrollbar-gutter は将来的にスクロールバーが出る場面が生じても幅を
+   固定しておくための保険（overflow:hiddenと両方効かせて二重に防ぐ） */
+html {
+  /* 明示的に100%とし、ブラウザ/OSの文字サイズ設定をremに反映させる */
+  font-size: 100%;
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--fs-xs);
+}
+
+/* フォーカスリングを明示する。マウス操作時(:focus)は出さず、
+   キーボード操作時(:focus-visible)にのみ表示してクリック時の見た目を保つ */
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* 動きに敏感なユーザー向け設定。MapLibre側のtransition/flyToはJSで
+   REDUCED_MOTIONを見て個別に無効化しているので、ここではCSS側の
+   トランジション・アニメーションのみを止める */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  /* dvh対応ブラウザでは100dvhが上書きする（未対応ブラウザは無効な値として
+     無視し100vhのまま）。モバイルはアドレスバーの出入りで100vhの基準となる
+     実ビューポート高さ自体が伸縮するため、100vhのままだとbodyの高さが
+     そのたびに変わり、下部固定バーが跳ねる／隠れる原因になっていた。
+     dvh（動的ビューポート高さ）はアドレスバーの状態を織り込んだ値なので
+     JS側で計測し直さなくてもこの伸縮を吸収できる */
+  height: 100dvh;
+  overflow: hidden;
+  /* 下部固定バー(timeline-bar)の高さぶんを常に確保し、地図やパネルがその裏に
+     隠れないようにする。--bar-h はCSSで決め打ちの定数（JSは一切書き込まない。
+     詳細は .timeline-bar 側のコメント参照）なので、この値自体が実行中に
+     変わることはない */
+  padding-bottom: var(--bar-h);
+}
+
+button, select, input {
+  font-family: inherit;
+}
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* ===== header ===== */
+.app-header {
+  position: relative; /* z-index を効かせるため（通常のフローでは不要だが他の固定要素より確実に手前にする） */
+  flex: none;
+  height: var(--header-h);
+  min-height: var(--header-h);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  z-index: 30;
+}
+
+/* 多言語化でタイトルの文字数が言語ごとに大きく変わる（例: ポルトガル語・
+   インドネシア語は日本語より長くなりがち）。以前は flex:none で常に全文
+   表示していたが、それだと狭い画面＋長い訳文の組み合わせでヘッダーが
+   はみ出しうる。event-metaと同様に縮小・省略を許容し、隣の言語切替が
+   常にフル表示されることを優先する */
+.app-header h1 {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-base);
+  margin: 0;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* flexの子はデフォルトでは中身のnowrapテキストの分だけ広がろうとして
+   親をはみ出す(min-width:autoの罠)。min-width:0を与えて初めて
+   overflow/text-overflowが効くようになる */
+.event-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ハンバーガーメニュー（テキスト版データ一覧+11言語リンクを格納）を開く
+   ボタン。タップしやすいよう44px角を確保する */
+.menu-toggle {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 6px;
+  font-size: var(--fs-lg);
+  line-height: 1;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.menu-toggle:hover { background: #f4f3f0; }
+
+/* ヘッダー下にドロップダウンするメニュー本体。hidden属性で開閉するため
+   display制御はここで完結させる（[hidden]の既定と衝突しないよう明示） */
+.site-menu {
+  position: fixed;
+  top: calc(var(--header-h) + 8px);
+  right: 14px;
+  width: min(280px, calc(100vw - 28px));
+  max-height: calc(100vh - var(--header-h) - 16px);
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .14);
+  padding: 8px;
+  z-index: 42;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.site-menu[hidden] { display: none; }
+
+/* メニュー先頭の「データ更新: ...時点」。リンクではない情報行なので
+   hoverを持たせず、控えめな色で他の項目と区別する */
+.menu-updated {
+  margin: 0;
+  padding: 8px 8px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+}
+
+.menu-data-link {
+  display: block;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-decoration: none;
+}
+.menu-data-link:hover { background: #f4f3f0; }
+
+.menu-langs {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-langs a {
+  display: block;
+  padding: 8px;
+  border-radius: 6px;
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  text-decoration: none;
+}
+.menu-langs a:hover { background: #f4f3f0; }
+
+/* 現在表示中の言語を太字+チェックで強調する */
+.menu-langs a[aria-current="true"] {
+  font-weight: 700;
+  background: #f2f1ec;
+}
+.menu-langs a[aria-current="true"]::before {
+  content: "✓ ";
+}
+
+/* 初回訪問時だけ出す1行の非公式サイト注記。localStorageで既読を覚え、
+   以後は表示しない（app.js側で制御） */
+.site-banner {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: #f4f3f0;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  color: var(--ink);
+  text-align: center;
+}
+
+.site-banner[hidden] { display: none; }
+
+.banner-close {
+  flex: none;
+  border: none;
+  background: none;
+  font-size: var(--fs-sm);
+  color: var(--ink-sub);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+/* ===== layout ===== */
+.app-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 300px 1fr 320px;
+  min-height: 0;
+}
+
+/* デスクトップでの左右パネルの開閉。閉じている間は列幅を0にして地図を
+   広げる（.left-closed/.right-closedはsetPanelOpen()がapp-mainへ付け外しする）。
+   860px以下ではモバイル用のグリッド定義（下のメディアクエリ）が優先される */
+@media (min-width: 861px) {
+  .app-main {
+    transition: grid-template-columns .2s ease;
+  }
+  .app-main.left-closed {
+    grid-template-columns: 0px 1fr 320px;
+  }
+  .app-main.right-closed {
+    grid-template-columns: 300px 1fr 0px;
+  }
+  .app-main.left-closed.right-closed {
+    grid-template-columns: 0px 1fr 0px;
+  }
+  .app-main.left-closed .panel-left,
+  .app-main.right-closed .panel-right {
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+  }
+
+  /* パネルを閉じている間だけ、地図の縁に再度開くための小さなチップを出す。
+     .sheet-toggle自体はモバイル用に定義済みなので、ここでは表示条件と
+     位置だけをデスクトップ向けに上書きする */
+  .sheet-toggle {
+    display: none;
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    z-index: 22;
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 22px;
+    padding: 8px 16px;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+    cursor: pointer;
+  }
+  .app-main.left-closed #toggle-ranking { display: flex; left: 10px; }
+  .app-main.right-closed #toggle-detail { display: flex; right: 10px; }
+}
+
+/* パネル自体は高さを固定し（グリッド行いっぱいに広げる）、スクロールは
+   させない。閉じるボタンの行(.panel-head)やモード切替(.mode-switch)は
+   常に見えたまま、下の .panel-scroll だけが伸び縮み・スクロールする。
+   以前は .panel 自体が overflow-y:auto だったため、ヘッダーごとスクロール
+   で流れて見失われたり、環境によってはパネルそのものが際限なく下に
+   伸びてしまう不具合があった */
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0; /* グリッドの子もmin-width:autoにより中身の分だけ広がろうとするため */
+  /* グリッド/フレックスの子として伸びきってしまう環境でも必ず高さの上限を
+     持つよう、ビューポート基準でも明示しておく（保険としての指定） */
+  max-height: calc(100vh - var(--header-h) - var(--bar-h));
+  overflow: hidden; /* パネル自体はここで打ち止め。中身は.panel-scrollが担当 */
+  padding: 12px;
+  background: var(--surface);
+}
+
+.panel-left {
+  border-right: 1px solid var(--line);
+}
+
+.panel-right {
+  border-left: 1px solid var(--line);
+}
+
+/* 左右パネル共通の開閉ヘッダー。閉じるボタン(.detail-close使い回し)を常設し、
+   デスクトップでも折りたたみを迷わず見つけられるようにする。
+   flex:none でスクロール領域が縮んでもこの行だけは縮まない＝常に見える */
+.panel-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+/* パネル本体のスクロール領域。ランキング/ニュース一覧(#panel-metric-content,
+   #panel-news-content)と市町村詳細(#detail-content)のいずれもこのクラスを
+   持たせ、パネル内でコンテンツが多いときはここだけがスクロールする */
+.panel-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden; /* パネル内は横スクロールを想定していないので、はみ出しは常に隠す */
+  overflow-wrap: anywhere; /* 長い市町村名・数値・バッジ等が横に突き抜けないための保険 */
+}
+
+.panel-head-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* overflow:hidden で地図ビューポートの外側をクリップする。上位ラベル・
+   ニュースマーカーはHTMLオーバーレイ(position:absolute)で描いており、
+   地図を大きくパンすると投影先の座標が map-wrap の外（時に数千px）へ
+   出ることがある。クリップしないと、その座標が祖先のスクロール可能領域を
+   押し広げ、ページに縦スクロールバーが出たり消えたりする振動の原因になる
+   （実機で「フッターが沈む」「ページ幅ががたつく」として報告された不具合）。
+   JS側でも画面外アンカーはカリングして描画自体をスキップする
+   （computeLabelLayout/repositionNewsMarkers）が、こちらは最終防衛線 */
+.map-wrap {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+}
+
+/* 権利表示（MapLibreのattributionコントロール）は常に完全に読める状態で
+   なければならない。OpenStreetMap(ODbL)・OpenMapTiles・地理院タイル利用規約の
+   いずれも帰属表示を求めている。#map の内部要素なのでDOM順としては
+   map-wrap内の他のオーバーレイ（凡例・直接ラベル・ニュースマーカー）より
+   先に来てしまい、たまたま同じ画面位置に来たオーバーレイの下に隠れうる。
+   z-indexを他のmap-wrap内オーバーレイより確実に高くして、常に最前面に出す。
+
+   指定先は .maplibregl-control-container ではなくその直下の四隅コンテナ
+   （.maplibregl-ctrl-bottom-right など）。control-container 自体は
+   position:static で z-index が一切効かず（静的配置の要素にz-indexは適用
+   されない）、実際に重なり順を持っているのは position:absolute + z-index:2 が
+   付く四隅の方。ここを上げないと、権利表示が凡例(z-index:7)の下に潜って
+   先頭の「©」が隠れる（OpenFreeMapの権利表示は長いので実際に発生した）。
+
+   ただし上げすぎてはいけない。ここには権利表示だけでなくNavigationControlや
+   ベースマップ切替も入っており、45にしたところモバイルのボトムシート
+   (z-index:25)や表オーバーレイ(z-index:20)の上にまで浮いてしまった
+   （展開したベースマップ切替がシートの✕を覆ってタップを奪う実機報告）。
+   「地図の上のオーバーレイ（凡例7・直接ラベル6・ポップアップ10）よりは上、
+   地図ごと覆う面（表20・シート25）よりは下」がここの正しい層 */
+.maplibregl-control-container > div {
+  z-index: 15;
+}
+
+/* 既定でも読めるサイズだが、コンパクト表示(ⓘ)を展開したときのポップアップが
+   極端に狭い幅で折り返し過ぎないよう最低限のゆとりを持たせる */
+.maplibregl-ctrl-attrib.maplibregl-compact.maplibregl-compact-show {
+  max-width: min(78vw, 420px);
+}
+
+/* ===== basemap switch（モノクロ／カラー／地理院） =====
+   地図右上、NavigationControlの下に出すMapLibreのカスタムコントロール。
+   選択状態は .mode-btn と同じく aria-pressed で表す。
+   横並びにすると ne / my などの訳語で地図幅を圧迫するので縦積みにする。
+   狭い画面ではパレットアイコン1つに畳む（下の max-width:860px を参照） */
+.basemap-switch {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.basemap-switch .basemap-options {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 広い画面では畳む必要がないのでアイコンは出さず、3択を常に見せる */
+.basemap-switch .basemap-toggle {
+  display: none;
+}
+
+/* .maplibregl-ctrl-group button の width/height:29px を上書きする必要がある
+   （そのままだとラベルが「モ…」のように潰れる）。セレクタを2クラスにして勝たせる */
+.basemap-switch .basemap-btn {
+  width: auto;
+  height: auto;
+  border: none;
+  background: #fff;
+  padding: 6px 10px;
+  min-height: 44px; /* タッチターゲット */
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink-sub);
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.basemap-switch .basemap-btn + .basemap-btn {
+  border-top: 1px solid var(--line);
+}
+
+.basemap-switch .basemap-btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: #fff;
+}
+
+/* ===== mode switch（数値マップ／ニュースマップ） =====
+   指標選択とは独立した状態なので見た目もパネル最上部で明確に分ける。
+   2択の segmented control。中身はJSが生成する。
+   flex:none で .panel-head と同様に常に見えたままにする（スクロールで隠れない） */
+.mode-switch {
+  flex: none;
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.mode-btn {
+  flex: 1;
+  border: none;
+  background: #fff;
+  padding: 8px 6px;
+  min-height: 44px; /* タッチターゲット */
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink-sub);
+  cursor: pointer;
+}
+
+.mode-btn + .mode-btn {
+  border-left: 1px solid var(--line);
+}
+
+.mode-btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.panel-subhead {
+  margin: 4px 0 6px !important;
+}
+
+/* ===== metric switch ===== */
+.metric-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.metric-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 7px;
+  padding: 6px 12px;
+  min-height: 44px; /* タッチターゲット */
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.2;
+}
+
+/* 「どの指標がどの色か」が一目でわかるよう、白いリング+濃色の縁取りで
+   ボタンの背景色を問わず色そのものが読み取れるようにする。選択中は
+   さらに一回り拡大し、押すと切り替わる操作対象であることを強調する */
+.metric-btn .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(11, 11, 11, .3);
+  transition: transform .15s ease;
+}
+
+.metric-btn[aria-pressed="true"] {
+  border-color: var(--ink);
+  color: var(--ink);
+  font-weight: 700;
+  background: #f4f3f0;
+}
+
+.metric-btn[aria-pressed="true"] .dot {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 1px rgba(11, 11, 11, .4), 0 0 0 3px rgba(11, 11, 11, .14);
+}
+
+/* ===== stat header ===== */
+.stat-block {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: #fff;
+}
+
+.stat-block .label {
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+}
+
+.stat-block .value {
+  font-size: var(--fs-xxl);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.stat-block .value .unit {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--ink-sub);
+  margin-left: 2px;
+}
+
+/* 死者数・負傷者数で、県合計に市町村未確定の人数（関連死調査中・身元不明者等）
+   が含まれる場合の注記。extrasが無い時点ではJS側でdisplay:noneにする */
+.stat-extras-note {
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  line-height: 1.4;
+}
+
+.panel h2 {
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  margin: 14px 0 6px;
+  font-weight: 700;
+}
+
+/* ===== ranking ===== */
+.ranking-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ranking-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  min-height: 44px; /* タッチターゲット */
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  font-size: var(--fs-xs);
+}
+
+.ranking-list li:hover, .ranking-list li:focus-visible {
+  background: #f4f3f0;
+}
+
+.ranking-list li.is-selected {
+  background: #eeece5;
+  font-weight: 700;
+}
+
+.rank-no {
+  width: 18px;
+  color: var(--ink-sub);
+  font-size: var(--fs-xs);
+  flex: none;
+}
+
+.rank-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 熊本県以外の市町村（参考掲載）だとひと目でわかる県名バッジ。
+   ranking/tableの両方で使う */
+.pref-badge {
+  flex: none;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--ink-sub);
+  background: #f0efe9;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+/* 断水戸数のうち、熊本県資料未報告で内閣府報の値に差し替えている市町村の
+   出典バッジ。pref-badgeと紛れないよう破線にして「補足情報」と分かるようにする */
+.source-badge {
+  flex: none;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--ink-sub);
+  background: none;
+  border: 1px dashed var(--ink-thin);
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.rank-bar-wrap {
+  width: 46px;
+  height: 6px;
+  background: var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+  flex: none;
+}
+
+.rank-bar {
+  height: 100%;
+  border-radius: 3px;
+}
+
+/* ランキングの値は「重要な数値」として16px以上を確保する */
+.rank-value {
+  width: 72px;
+  text-align: right;
+  flex: none;
+  font-size: var(--fs-md);
+  font-weight: 700;
+}
+
+/* ===== table toggle ===== */
+.table-toggle-btn {
+  margin-top: 14px;
+  width: 100%;
+  min-height: 44px; /* タッチターゲット */
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 7px;
+  padding: 8px;
+  font-size: var(--fs-xs);
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+/* ===== ニュースマップモード =====
+   カテゴリ色は既存の指標パレットを流用（凡例の色数を増やさないため）。
+   テキストは常にインク色にし、色は丸チップ/枠線だけに使う方針は
+   数値マップ側と統一する */
+.news-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.news-chip-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  min-height: 36px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.news-chip-btn .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(11, 11, 11, .3);
+  transition: transform .15s ease;
+}
+
+.news-chip-btn[aria-pressed="true"] {
+  border-color: var(--ink);
+  color: var(--ink);
+  font-weight: 700;
+  background: #f4f3f0;
+}
+
+.news-chip-btn[aria-pressed="true"] .dot {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 1px rgba(11, 11, 11, .4), 0 0 0 3px rgba(11, 11, 11, .14);
+}
+
+.news-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.news-group-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink-sub);
+  margin: 12px 0 4px;
+}
+
+/* 「県内全域」の折りたたみグループ。件数が多い報でも市町村別の一覧まで
+   スクロールしなくて済むよう既定で閉じる（summaryに件数を出す） */
+.news-group {
+  margin: 12px 0 4px;
+}
+
+.news-group summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink-sub);
+  padding: 4px 2px;
+}
+
+.news-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.news-group summary::before {
+  content: "▶";
+  display: inline-block;
+  margin-right: 5px;
+  font-size: 9px;
+  color: var(--ink-thin);
+}
+
+.news-group[open] summary::before {
+  content: "▼";
+}
+
+.news-group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.news-item {
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.news-item:hover, .news-item:focus-visible {
+  background: #f4f3f0;
+}
+
+.news-item-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.news-muni-name {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* カテゴリチップ。丸ドット+ラベルのみ色を使い、本文テキストは常にインク色 */
+.news-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+.news-cat-chip .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.news-badge {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+.news-badge-new {
+  color: var(--up);
+  border: 1px solid var(--up);
+}
+
+.news-badge-updated {
+  color: var(--ink-sub);
+  border: 1px solid var(--ink-sub);
+}
+
+.news-item-text {
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.news-empty {
+  color: var(--ink-sub);
+  font-size: var(--fs-xs);
+  padding: 12px 4px;
+}
+
+/* 地図上のニュースマーカー（市町村ごとに集約したイベント件数）。
+   MapLibreのcircleレイヤーではなくHTMLオーバーレイで描き、上位5ラベルと
+   同じ理由（システムフォント統一・グリフ配信への非依存）に合わせる */
+.news-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff;
+  border: 2px solid var(--ink-sub);
+  border-radius: 999px;
+  padding: 3px 8px 3px 6px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
+  white-space: nowrap;
+}
+
+.news-marker .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* 指標にデータが無い時点（内閣府報のみの日など）のランキング欄 */
+.ranking-empty {
+  color: var(--ink-sub);
+  font-size: var(--fs-xs);
+  padding: 12px 4px;
+  line-height: 1.5;
+}
+
+/* ===== 支援拠点マップ =====
+   チップは .news-chip-btn を流用し、件数バッジと一覧・詳細だけを足す */
+
+.chip-count {
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  font-weight: 400;
+}
+
+.news-chip-btn[aria-pressed="true"] .chip-count {
+  color: var(--ink);
+}
+
+.support-timeless-note {
+  margin: 0 0 12px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  line-height: 1.5;
+}
+
+.support-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.support-item {
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.support-item:hover, .support-item:focus-visible {
+  background: #f4f3f0;
+}
+
+.support-item.is-selected {
+  background: #f6f5f1;
+  box-shadow: inset 3px 0 0 var(--ink);
+}
+
+.support-item-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.support-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+.support-cat-chip .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.support-muni {
+  color: var(--ink-sub);
+}
+
+.support-item-name {
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.support-item-sub {
+  color: var(--ink-sub);
+  line-height: 1.45;
+}
+
+/* 拠点は最大100件規模になるため、ニュースマーカーのような名前つきの
+   バルーンではなく色付きの点だけを置く（名称は一覧と詳細で読ませる） */
+.support-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.support-marker .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+}
+
+.support-marker.is-selected .dot {
+  width: 18px;
+  height: 18px;
+  box-shadow: 0 0 0 3px rgba(11, 11, 11, .25), 0 1px 3px rgba(0, 0, 0, .35);
+}
+
+.support-detail {
+  margin: 12px 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  display: grid;
+  grid-template-columns: minmax(72px, auto) 1fr;
+}
+
+.support-detail dt {
+  padding: 7px 8px 7px 2px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-sub);
+}
+
+.support-detail dd {
+  margin: 0;
+  padding: 7px 2px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.support-note {
+  margin: 6px 0 0;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  line-height: 1.5;
+}
+
+.support-source {
+  margin: 10px 0 0;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  line-height: 1.5;
+}
+
+.support-as-of {
+  color: var(--ink-sub);
+}
+
+/* ===== legend =====
+   <details>ベースのアコーディオン。展開してもmax-height+overflow-yで
+   map-wrapの外にはみ出さないようにする（position:absoluteのbottom基準で
+   上方向に伸びるので、はみ出るとすれば地図の上端側） */
+.legend {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  max-width: min(220px, calc(100% - 20px));
+  max-height: min(70vh, calc(100% - 20px));
+  overflow-y: auto;
+  background: rgba(252, 252, 251, .95);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px 12px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  z-index: 7; /* 市町村の直接ラベル(.map-label, z-index:6)より上に出す */
+  backdrop-filter: blur(2px);
+}
+
+.legend summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px; /* タッチターゲット */
+  margin: 0 -12px;
+  padding: 0 12px;
+  cursor: pointer;
+  list-style: revert;
+}
+
+.legend[open] summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.legend-body {
+  padding: 8px 0 6px;
+}
+
+#legend-title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* 入れ子同心円（下端揃え）+ リーダー線 + 値ラベルのSVGを描く。
+   サイズはJS(computeLegendGeometry)が最大円の直径とラベル幅から算出して
+   svgのwidth/height/viewBoxに直接反映するため、ここでは固定の高さを
+   持たせない（旧実装はheight:60px固定で最大円92pxが収まらず崩れていた） */
+.legend-circles {
+  display: block;
+  color: var(--ink-sub);
+}
+
+.legend-circles svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.legend-note {
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  max-width: 190px;
+  line-height: 1.4;
+}
+
+/* ===== overlay labels / epicenter ===== */
+/* 位置・幅・高さはJS(computeLabelLayout)が衝突回避のうえで毎回px指定するため
+   ここでは transform 等による自動配置は行わない */
+.map-label {
+  position: absolute;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: var(--fs-xs); /* app.js の LABEL_FONT と揃える */
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(252, 252, 251, .9);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+  z-index: 6;
+}
+
+/* 密集でラベルを隠したときのズーム促しピル。凡例(z-index:7)と同層で
+   地図下部中央に置く（凡例=左下、タイムラインバー=地図の外なので干渉しない） */
+/* bottomは権利表示（attributionコントロール）の帯を避けた位置にする。
+   OpenFreeMapの権利表示は地理院タイルより長く、狭い画面では2行(約44px)に
+   折り返して画面下端いっぱいを占める。10pxだとその上に重なってしまい、
+   「権利表示は常に完全に読める」という前提を崩す */
+.label-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 20px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 6px 12px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(252, 252, 251, .95);
+  color: var(--ink-sub);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  z-index: 7;
+  backdrop-filter: blur(2px);
+}
+
+.label-hint:hover {
+  color: var(--ink);
+}
+
+.label-hint[hidden] { display: none; }
+
+.epicenter-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.epicenter-mark {
+  font-size: var(--fs-xl);
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+}
+
+.epicenter-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(252, 252, 251, .88);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+/* maplibre popup as tooltip。市町村名の直接ラベル(.map-label, z-index:6)や
+   凡例(.legend, z-index:7)より確実に手前に出す（実機で「バルーンがラベルの
+   下に隠れる」報告があった）。ホバー中はそのmunicipalityの直接ラベル自体を
+   一時的に非表示にしてもいる（app.js の showTooltip/hideTooltip）ので、
+   通常は重ならないが、隣接する他の市町村のラベルと近接するケースの保険 */
+.maplibregl-popup {
+  z-index: 10;
+}
+
+.maplibregl-popup-content {
+  font-family: var(--font);
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .18);
+}
+
+.tooltip-name {
+  font-weight: 800;
+  font-size: var(--fs-sm);
+  margin-bottom: 3px;
+}
+
+.tooltip-main {
+  font-size: var(--fs-xs);
+  margin-bottom: 4px;
+}
+
+.tooltip-sub {
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* ===== detail panel ===== */
+.detail-empty {
+  color: var(--ink-sub);
+  font-size: var(--fs-xs);
+  padding: 20px 4px;
+}
+
+/* パネルを閉じるボタンは panel-head 側の常設ボタンに移したため、
+   ここは市町村名(h3)とpref バッジが縦に並ぶだけの単純なブロックでよい */
+.detail-head h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+
+/* 44x44のヒットターゲット。背景・枠を付けて存在がひと目でわかるようにする */
+.detail-close {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 1.125rem;
+  line-height: 1;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.detail-close:hover {
+  background: #f4f3f0;
+  border-color: var(--ink-sub);
+}
+
+.detail-chip {
+  display: inline-block;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 6px;
+  margin-top: 3px;
+}
+
+.detail-metrics {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.detail-metrics li {
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-xs);
+}
+
+.detail-metrics li.is-current {
+  background: #f6f5f1;
+}
+
+.dm-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dm-row .dm-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 一部成分が不明な合算値（負傷者数・住家被害）の注記。dm-value の幅を
+   崩さないよう行の下に別行で出す */
+.dm-note {
+  margin: 2px 0 0 14px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  line-height: 1.4;
+}
+
+.dm-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.dm-label {
+  flex: 1;
+  color: var(--ink-sub);
+}
+
+/* 各指標の現在値。詳細パネルの中で読み取られる中心的な数値なので
+   「重要な数値は16px以上」の対象にする */
+.dm-value {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  min-width: 60px;
+  text-align: right;
+}
+
+.dm-delta {
+  min-width: 62px;
+  text-align: right;
+  font-size: var(--fs-xs);
+}
+
+.dm-delta.up { color: var(--up); }
+.dm-delta.down { color: var(--down); }
+.dm-delta.flat { color: var(--flat); }
+
+.water-note {
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  background: #f4f3f0;
+  border-radius: 7px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.sparkline-wrap {
+  margin-top: 14px;
+}
+
+/* viewBox(260x100)とCSSのaspect-ratioを一致させ、preserveAspectRatioの
+   既定(xMidYMid meet)で歪みなく収まるようにする。狭いパネル・モバイルでも
+   min-heightで潰れないようにする */
+.sparkline-wrap svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2.6 / 1;
+  min-height: 64px;
+  overflow: visible;
+}
+
+.spark-val {
+  margin-top: 4px;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--ink-sub);
+  text-align: right;
+}
+
+/* ===== table overlay ===== */
+.table-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--surface);
+  z-index: 20;
+  overflow: auto;
+  padding: 14px;
+  display: none;
+}
+
+.table-overlay.is-open { display: block; }
+
+.table-overlay-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  padding: 2px 0 8px;
+  z-index: 3;
+}
+
+.table-overlay-head h2 {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--ink);
+}
+
+.back-btn {
+  min-height: 44px; /* タッチターゲット */
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 7px;
+  padding: 6px 14px;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.back-btn:hover {
+  background: #f4f3f0;
+  border-color: var(--ink-sub);
+}
+
+/* table-layout:fixed にし、列幅を最初の行(thead)のセルだけで決め打ちする。
+   既定の table-layout:auto + width:100% は「幅100%は最小値の目安に過ぎず、
+   実際の幅は中身（数値の桁数・＊†などのマーク・県名バッジの有無）に応じて
+   広がる」挙動になっており、時点や指標を切り替えるたびにテーブルの実幅が
+   変わっていた（実機で「テーブルの幅も内容によって変わる」と報告された
+   不具合そのもの）。fixedにすると列幅は完全にCSS/ビューポートだけで決まり、
+   収まらない中身はセル側のellipsisで省略される（テーブル自体は伸びない） */
+table.data-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  min-width: 950px; /* 内容に関わらず一定。狭い画面では.table-overlayのoverflow:autoで横スクロール */
+  font-size: var(--fs-xs);
+}
+
+.data-table caption {
+  text-align: left;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  margin-bottom: 6px;
+}
+
+.data-table th, .data-table td {
+  border: 1px solid var(--line);
+  padding: 6px 9px;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* table-layout:fixed下で中身が列幅を超えても外にはみ出させない */
+}
+
+.data-table th[scope="row"] {
+  text-align: left;
+  background: #f8f7f4;
+  position: sticky;
+  left: 0;
+}
+
+/* table-overlay-head（戻るボタン）が同じスクロールコンテナ内でtop:0に
+   固定されているため、その実高さぶんだけ下にずらして重ならないようにする */
+.data-table thead th {
+  background: #f4f3f0;
+  position: sticky;
+  top: 54px;
+  text-align: right;
+}
+
+/* table-layout:fixed の列幅は「最初の行（=このthead行）」のセル幅だけで
+   決まる。市町村名＋県外バッジ列だけ少し広めに固定し、残り8指標列は
+   自動的に均等割りされる（＝内容の文字数には一切依存しない） */
+.data-table thead th:first-child {
+  text-align: left;
+  left: 0;
+  z-index: 2;
+  width: 150px;
+}
+
+.data-table tbody tr:nth-child(even) td {
+  background: rgba(0, 0, 0, .015);
+}
+
+.cell-null { color: var(--ink-sub); }
+
+/* ===== bottom timeline bar =====
+   画面下部に固定表示する操作バー。高さは --bar-h の固定値のみで決まり、
+   実行中に一切変化しない（JSはこの値を読みも書きもしない）。
+   以前は app.js の syncBarHeight() が実測してこの変数を書き換えていたが、
+   実機で「地図をパンすると/時点を切り替えるとバーが大きくうねる」不具合の
+   直接原因になっていた（内容→高さ測定→--bar-h書き換え→bodyのpadding変化
+   →#mapのリサイズ→MapLibreのResizeObserverがmap.resize()→'move'発火、という
+   経路が存在し、条件によっては測定→書き換えが繰り返し発火しうる構造だった）。
+   今は逆に「中身がこの固定高さに収まるように」設計する:
+   - .timeline-top / .timeline-controls は各行とも常に1行（flex-wrap:nowrap）。
+     幅が足りない場合はテキストを省略記号で切る（折り返して行数が増える＝
+     高さが変わる、を避けるため）。
+   - height（min-heightではない）+ overflow:hidden で上限を保証する。極端な
+     文字サイズ設定などで中身が収まりきらない場合も、バーの外側の高さだけは
+     絶対に変えない（中身が見切れる方が、レイアウト全体が振動するより安全）。
+   - ポップオーバー(.info-panel)はこのクリップの影響を受けないよう、
+     あえて .timeline-bar の外（兄弟要素）に出している。 */
+.timeline-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--bar-h);
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+  background: rgba(252, 252, 251, .97);
+  backdrop-filter: blur(4px);
+  padding: 8px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 40;
+}
+
+.timeline-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap; /* 折り返すと行数が増えてバーの高さが変わってしまうため禁止 */
+  gap: 10px;
+}
+
+/* 時点ごとに文字列長が変わる（例: 「8月4日（火）14:00時点」）。幅を予約して
+   伸縮を隠す旧実装は「折り返し」自体は防げていなかったため、そのアプローチは
+   やめ、flex:1 + min-width:0 + ellipsis で「常に1行、収まらなければ省略記号」
+   にする（.info-toggleは常にフル表示、余った分だけ日時側が伸縮/省略される） */
+.current-datetime {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-xl);
+  font-weight: 800;
+}
+
+/* 出典・注記はバーを占有せず、クリックで開くポップオーバーに集約する */
+.info-toggle {
+  flex: none;
+  min-height: 44px; /* タッチターゲット */
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink-sub);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.info-toggle:hover { background: #f4f3f0; }
+
+/* .timeline-bar の外（bodyの直下）に置いたポップオーバー。バー自体は
+   overflow:hidden でクリップされるため、あえてバーの外に出して独立した
+   fixed 要素にしている。位置は --bar-h（固定値）を基準にバーの直上へ */
+.info-panel {
+  position: fixed;
+  right: 16px;
+  left: auto;
+  bottom: calc(var(--bar-h) + 8px);
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(60vh, calc(100vh - var(--header-h) - 24px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, .14);
+  z-index: 41;
+}
+
+.info-panel[hidden] { display: none; }
+
+/* 出典は「出典: リンク、リンク」を1行のまま流し、はみ出す場合だけ省略する */
+.source-links {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 8px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+}
+
+.source-links a {
+  display: inline;
+}
+
+/* 「本サイトは非公式」の注記。出典・注記パネルの最上部・出典リンクより前に
+   置き、太字＋枠で他の注記より目立たせる。色は既存パレット（インク/罫線
+   トークン）のみを使い、新しい色相を持ち込まない */
+.info-disclaimer-strong {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.info-disclaimer, .info-credit {
+  margin: 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+  line-height: 1.5;
+  /* GitHubリポジトリ名のようなスペースなしの長いトークンでも
+     ポップオーバー幅からはみ出させない */
+  overflow-wrap: anywhere;
+}
+
+.info-credit { margin-top: 6px; }
+.info-credit a { color: var(--ink-sub); }
+
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tl-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tl-btn.play {
+  border-radius: 22px;
+  width: 84px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  gap: 4px;
+}
+
+/* アイコンは字形の都合で行の中心からずれやすいので、幅を固定して
+   「ラベルを隠したときにボタンの中心へ来る」ことを保証する */
+.tl-btn-icon {
+  flex: none;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.slider-area {
+  flex: 1;
+  min-width: 0; /* flex:1でもmin-width:autoの罠を避けるため明示 */
+  position: relative;
+}
+
+.slider-area input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--ink);
+  /* トラック全体の縦方向のヒット領域を広げ、指での操作を狙いやすくする */
+  padding: 12px 0;
+  height: 44px;
+  box-sizing: content-box;
+}
+
+.slider-area input[type="range"]::-webkit-slider-thumb {
+  width: 24px;
+  height: 24px;
+}
+
+.slider-area input[type="range"]::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border: none;
+}
+
+/* ===== mobile sheet toggles ===== */
+.sheet-toggle {
+  display: none;
+}
+
+/* ===== responsive ===== */
+@media (max-width: 860px) {
+  .app-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    position: relative;
+  }
+
+  .panel-left, .panel-right {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--bar-h);
+    /* デスクトップ用の height:100% はここでは無効化する。position:fixed +
+       height:100% だと（上端を指定していないため）ビューポート全体基準の
+       100vh相当になってしまい、max-heightで55vhに切り詰められた分だけ
+       常に無駄な余白ができる。auto に戻して「中身に合わせて伸び、55vhで
+       頭打ち」という元の見た目を保つ */
+    height: auto;
+    max-height: 55vh;
+    border: none;
+    border-top: 1px solid var(--line);
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, .12);
+    transform: translateY(105%);
+    transition: transform .25s ease;
+    z-index: 25;
+  }
+
+  .panel-left.is-open, .panel-right.is-open {
+    transform: translateY(0);
+  }
+
+  /* bottom基準（right:10px, bottomはバーのすぐ上）で置いていたところ、地図の
+     権利表示（MapLibreのattributionコントロール、既定でbottom-right）と
+     同じ右下の角を取り合い、チップがattributionの上に重なって完全に隠して
+     しまう不具合があった（利用規約上、常に読めることが必須）。デスクトップ
+     版と同じ「縁の垂直中央」に統一し、右下の角そのものから離す */
+  .sheet-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 22;
+    min-height: 44px; /* タッチターゲット */
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 22px;
+    padding: 8px 16px;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+    cursor: pointer;
+  }
+
+  #toggle-ranking { left: 10px; }
+  #toggle-detail { right: 10px; }
+
+  /* ベースマップ切替は縦3段のままだと地図の右側をずっと占有してしまうので、
+     パレットアイコン1つに畳んでタップで開くアコーディオンにする。
+     開いた分は下へ伸ばす（NavigationControlの下なので上方向には出せない） */
+  .basemap-switch .basemap-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* 畳んでいる間は NavigationControl の +/- と同じ大きさ。開いたときは
+       選択肢の幅に合わせて広がるよう、固定幅ではなく stretch にする
+       （.maplibregl-ctrl-group button の width:29px を打ち消す必要がある） */
+    width: auto;
+    min-width: 29px;
+    align-self: stretch;
+    height: 29px;
+    border: none;
+    background: #fff;
+    color: var(--ink-sub);
+    cursor: pointer;
+    padding: 0;
+  }
+
+  /* 開いていることは分かるが、選択中(aria-pressed=true の反転)より弱く見せる。
+     同じ反転にすると「アイコン行も選択肢のひとつ」に見えてしまう */
+  .basemap-switch.is-open .basemap-toggle {
+    background: var(--surface);
+    color: var(--ink);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .basemap-switch .basemap-options {
+    display: none;
+  }
+
+  .basemap-switch.is-open .basemap-options {
+    display: flex;
+  }
+
+  .event-meta { display: none; }
+
+  /* 再生ボタンは「再生」「一時停止」の文字を出さずアイコンだけの丸ボタンにする。
+     ▶／❚❚ は意味が自明で、他のtl-btn（< >）と揃うぶん狭い画面ではスライダーに
+     幅を回せる。ラベルは display:none で読み上げからも消えるが、
+     syncPlayButton() が aria-label に同じ意味を持たせているので名前は残る。
+     高さは 44px のまま＝ --bar-h の前提（行の高さ）を変えない */
+  .tl-btn.play {
+    width: 44px;
+    border-radius: 50%;
+    gap: 0;
+  }
+
+  .tl-btn.play .tl-btn-label { display: none; }
+
+  /* 文字と並べる前提で小さくしていたが、単独になるぶん見やすさを戻す */
+  .tl-btn.play .tl-btn-icon { font-size: 13px; }
+
+  /* 幅が狭い分だけフォントサイズを落とす。折り返しはflex-wrap:nowrap+
+     ellipsisで既に禁止されているので、ここでは行数・高さに影響しない */
+  .current-datetime { font-size: var(--fs-lg); }
+
+  .info-panel { left: 8px; right: 8px; width: auto; max-width: none; }
+
+  /* 縦に狭い分、凡例は右下の避難所トグルや左下のランキングトグルと
+     ぶつかるため上部の空きスペース（NavigationControlの反対側）へ */
+  .legend {
+    left: 8px;
+    right: auto;
+    top: 8px;
+    bottom: auto;
+  }
+
+  /* --bar-h はブレークポイントに関わらず :root の1箇所だけで定義する
+     （デスクトップ/モバイルで内容の行数が変わらないため、値も変える必要が
+     ない。複数箇所で定義すると値がずれたときにジッタの原因になる） */
+}
+
+/* noscript代替。言語間・テキスト版データの実リンクはヘッダーの
+   #site-menu（.menu-toggle/.site-menu、上記）に統合済み */
+.noscript-note {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #fcfcfb;
+  padding: 24px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* 姉妹サイト(もう一方の災害マップ)へのリンク。言語リストの下に区切って置く */
+.menu-related {
+  border-top: 1px solid var(--line);
+  margin-top: 6px;
+  padding-top: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.menu-related-heading {
+  padding: 2px 8px;
+  font-size: var(--fs-xs);
+  color: var(--ink-sub);
+}
+.menu-related a {
+  padding: 8px;
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  text-decoration: none;
+  border-radius: 6px;
+}
+.menu-related a:hover { background: #f4f3f0; }
