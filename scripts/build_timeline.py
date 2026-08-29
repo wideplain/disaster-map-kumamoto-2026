@@ -29,6 +29,24 @@ def load_optional(name):
         return json.load(f)
 
 
+def housing_units_as_of(h, date_str):
+    """団地1つぶんの、指定日時点での着工済み戸数を返す。
+
+    最初の着手時から戸数が変わらない団地は h["units"] をそのまま使うが、
+    後日「第2期」等で戸数が追加された団地は unit_history に
+    (発効日, その日以降の合計戸数) の履歴を持つ。指定日以前で一番新しい
+    チェックポイントの値を使うことで、増戸日より前の時点まで新しい合計を
+    遡って適用してしまわないようにする。
+    """
+    history = h.get("unit_history")
+    if not history:
+        return h.get("units")
+    applicable = [e for e in history if e.get("date") and e["date"] <= date_str]
+    if not applicable:
+        return h.get("units")
+    return max(applicable, key=lambda e: e["date"])["units"]
+
+
 def housing_started_by_muni(housing, dt):
     """その時点までに着手済みの建設型応急住宅の戸数を市町村ごとに合算する。
 
@@ -37,6 +55,7 @@ def housing_started_by_muni(housing, dt):
     団地が1つでも載っている市町村だけをキーに持たせ、未着手の市町村は
     0 として明示する（キー自体が無いと「未報告」と区別できない）。
     """
+    date_str = dt.date().isoformat()
     result = {}
     for h in housing or []:
         muni = h.get("muni")
@@ -45,8 +64,10 @@ def housing_started_by_muni(housing, dt):
         result.setdefault(muni, 0)
         if h.get("start_planned") or not h.get("start_date") or h.get("units") is None:
             continue
-        if h["start_date"] <= dt.date().isoformat():
-            result[muni] += h["units"]
+        if h["start_date"] <= date_str:
+            units = housing_units_as_of(h, date_str)
+            if units is not None:
+                result[muni] += units
     return result
 
 

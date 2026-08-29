@@ -1,5 +1,5 @@
 {
- "updated": "2026-08-23T16:08:49+09:00",
+ "updated": "2026-08-29T19:42:24+09:00",
  "types": [
   "bath",
   "well",
@@ -11,8 +11,8 @@
   "bath": {
    "name": "熊本県 被災者への入浴支援事業（協力公衆浴場一覧）",
    "url": "https://www.pref.kumamoto.jp/soshiki/45/244416.html",
-   "file_url": "https://www.pref.kumamoto.jp/uploaded/life/277954_876266_misc.pdf",
-   "as_of": "2026-08-21T17:00:00+09:00"
+   "file_url": "https://www.pref.kumamoto.jp/uploaded/life/278693_880361_misc.pdf",
+   "as_of": "2026-08-26T17:00:00+09:00"
   },
   "well": {
    "name": "熊本県 宇城・八代地域の防災井戸等",
@@ -23,13 +23,13 @@
   "housing": {
    "name": "熊本県 建設型応急住宅の進捗状況",
    "url": "https://www.pref.kumamoto.jp/soshiki/117/275490.html",
-   "as_of": "2026-08-21"
+   "as_of": "2026-08-29"
   },
   "ferry": {
    "name": "熊本県 フェリー「はくおう2」による入浴・休憩・宿泊支援（八代港）",
    "url": "https://www.pref.kumamoto.jp/soshiki/219/275641.html",
    "url2": "https://www.pref.kumamoto.jp/soshiki/219/276703.html",
-   "as_of": "2026-08-23"
+   "as_of": "2026-08-29"
   },
   "pet": {
    "name": "熊本県 熊本地震ペット救護本部",
@@ -157,7 +157,7 @@
    "source": "bath",
    "tel": "0968-43-3326",
    "hours": "6:00～24:00",
-   "period": "8/5～",
+   "period": "8/5～8/31",
    "closed": "毎月第3水曜日 （祝日の場合は翌平日）"
   },
   {
@@ -248,7 +248,7 @@
    "source": "bath",
    "tel": "0968-44-2939",
    "hours": "10:00～翌7:00",
-   "period": "8/4～",
+   "period": "8/4～8/31",
    "closed": "毎週木曜日",
    "note": "大型連休等の場合は、営業して いることもあり。"
   },
@@ -660,7 +660,7 @@
    "source": "bath",
    "tel": "0966-32-0200",
    "hours": "10:00～21:00 （最終受付20:30）",
-   "period": "7/31～",
+   "period": "7/31～8/31",
    "closed": "毎週水曜日"
   },
   {
@@ -675,7 +675,7 @@
    "source": "bath",
    "tel": "0966-25-8111",
    "hours": "7:00～22:00",
-   "period": "8/7～",
+   "period": "8/7～8/31",
    "closed": "毎月第2火曜日"
   },
   {
@@ -1652,7 +1652,7 @@
    "lng": 130.68436,
    "precision": "municipality",
    "source": "housing",
-   "units": 10,
+   "units": 58,
    "structure": "木造・平屋",
    "start_date": "2026-08-03",
    "start_raw": "8月3日",
@@ -1670,7 +1670,7 @@
    "lng": 130.68436,
    "precision": "municipality",
    "source": "housing",
-   "units": 30,
+   "units": 36,
    "structure": "木造 ・平屋",
    "start_date": "2026-08-03",
    "start_raw": "8月3日",
@@ -1688,7 +1688,7 @@
    "lng": 130.68436,
    "precision": "municipality",
    "source": "housing",
-   "units": 10,
+   "units": 35,
    "structure": "木造・平屋",
    "start_date": "2026-08-03",
    "start_raw": "8月3日",
@@ -1706,7 +1706,7 @@
    "lng": 130.67362,
    "precision": "municipality",
    "source": "housing",
-   "units": 20,
+   "units": 27,
    "structure": "軽量鉄骨造・平屋",
    "start_date": "2026-08-03",
    "start_raw": "8月3日",
@@ -1816,7 +1816,6 @@
    "units": 35,
    "structure": "木造・平屋、木造・２階",
    "start_date": "2026-08-22",
-   "start_planned": true,
    "start_raw": "8月22日（予定）",
    "move_in": "１０月下旬",
    "builder": "（一社）全国木造建設事業協会",
@@ -1835,7 +1834,6 @@
    "units": 17,
    "structure": "木造・平屋",
    "start_date": "2026-08-22",
-   "start_planned": true,
    "start_raw": "8月22日（予定）",
    "move_in": "１０月下旬",
    "builder": "（一社）熊本県優良住宅協会",
@@ -1854,10 +1852,63 @@
    "units": 40,
    "structure": "軽量鉄骨造・平屋",
    "start_date": "2026-08-22",
-   "start_planned": true,
    "start_raw": "8月22日（予定）",
    "move_in": "１０月中旬",
    "builder": "（一社）プレハブ建築協会",
+   "note": "みんなの家（談話室）併設"
+  },
+  {
+   "id": "housing-016",
+   "type": "housing",
+   "name": "（仮称）高柳仮設団地",
+   "muni": "宇土市",
+   "address": "",
+   "lat": 32.68729,
+   "lng": 130.65848,
+   "precision": "municipality",
+   "source": "housing",
+   "units": 45,
+   "structure": "木造・平屋",
+   "start_date": "2026-08-29",
+   "start_raw": "8月29日",
+   "move_in": "１１月上旬",
+   "builder": "（一社）熊本県優良住宅協会",
+   "note": "みんなの家（談話室）併設"
+  },
+  {
+   "id": "housing-017",
+   "type": "housing",
+   "name": "（仮称）小川駅西仮設団地",
+   "muni": "宇城市",
+   "address": "",
+   "lat": 32.64785,
+   "lng": 130.68436,
+   "precision": "municipality",
+   "source": "housing",
+   "units": 20,
+   "structure": "木造・平屋",
+   "start_date": "2026-08-29",
+   "start_raw": "8月29日",
+   "move_in": "１１月中旬",
+   "builder": "（一社）全国木造建設事業協会",
+   "note": "みんなの家（談話室）併設"
+  },
+  {
+   "id": "housing-018",
+   "type": "housing",
+   "name": "（仮称）鏡ヶ池仮設団地",
+   "muni": "八代市",
+   "address": "",
+   "lat": 32.5075,
+   "lng": 130.60181,
+   "precision": "municipality",
+   "source": "housing",
+   "units": 34,
+   "structure": "木造・平屋",
+   "start_date": "2026-08-26",
+   "start_raw": "8月26日",
+   "move_in": "１０月下旬",
+   "builder": "（一社）全国木造建設事業協会",
    "note": "みんなの家（談話室）併設"
   },
   {
@@ -1870,7 +1921,7 @@
    "lng": 130.54637,
    "precision": "address",
    "source": "ferry",
-   "note": "【重要なお知らせ】8月24日（月曜日）以降のはくおう2による入浴・休憩支援について / （8/26（水曜日）より）防衛省によるフェリー「はくおう2」による宿泊支援を始めます。",
+   "note": "8月30日（日曜日）～9月1日（火曜日）のはくおう2による入浴・休憩支援について / （8月30日（日曜日）より）防衛省によるフェリー「はくおう2」による宿泊支援を始めます。",
    "hours": "日により変動（要事前予約）"
   },
   {
@@ -1931,7 +1982,7 @@
   {
    "muni": "宇城市",
    "name": "(仮称)宇城市当尾仮設団地",
-   "units": 10,
+   "units": 58,
    "structure": "木造・平屋",
    "hall": "1棟",
    "start_date": "2026-08-03",
@@ -1939,12 +1990,22 @@
    "start_raw": "8月3日",
    "move_in": "9月下旬",
    "builder": "全木協",
-   "note": "基礎工事"
+   "note": "基礎工事",
+   "unit_history": [
+    {
+     "date": "2026-08-03",
+     "units": 10
+    },
+    {
+     "date": "2026-08-29",
+     "units": 58
+    }
+   ]
   },
   {
    "muni": "宇城市",
    "name": "(仮称)宇城市小川仮設団地",
-   "units": 30,
+   "units": 36,
    "structure": "木造 ・平屋",
    "hall": "－",
    "start_date": "2026-08-03",
@@ -1952,12 +2013,22 @@
    "start_raw": "8月3日",
    "move_in": "9月下旬",
    "builder": "全木協",
-   "note": "既存談話室利用予定 基礎工事"
+   "note": "既存談話室利用予定 基礎工事",
+   "unit_history": [
+    {
+     "date": "2026-08-03",
+     "units": 30
+    },
+    {
+     "date": "2026-08-29",
+     "units": 36
+    }
+   ]
   },
   {
    "muni": "宇城市",
    "name": "(仮称)宇城市豊野仮設団地",
-   "units": 10,
+   "units": 35,
    "structure": "木造・平屋",
    "hall": "1棟",
    "start_date": "2026-08-03",
@@ -1965,12 +2036,22 @@
    "start_raw": "8月3日",
    "move_in": "9月下旬",
    "builder": "全木協",
-   "note": "基礎工事"
+   "note": "基礎工事",
+   "unit_history": [
+    {
+     "date": "2026-08-03",
+     "units": 10
+    },
+    {
+     "date": "2026-08-29",
+     "units": 35
+    }
+   ]
   },
   {
    "muni": "氷川町",
    "name": "(仮称)氷川町吉本仮設団地",
-   "units": 20,
+   "units": 27,
    "structure": "軽量鉄骨造・平屋",
    "hall": "－",
    "start_date": "2026-08-03",
@@ -1978,7 +2059,17 @@
    "start_raw": "8月3日",
    "move_in": "9月上旬",
    "builder": "プレ協",
-   "note": "談話室検討中 本体工事"
+   "note": "談話室検討中 本体工事",
+   "unit_history": [
+    {
+     "date": "2026-08-03",
+     "units": 20
+    },
+    {
+     "date": "2026-08-26",
+     "units": 27
+    }
+   ]
   },
   {
    "muni": "氷川町",
@@ -2052,7 +2143,7 @@
    "structure": "木造・平屋、木造・２階",
    "hall": "",
    "start_date": "2026-08-22",
-   "start_planned": true,
+   "start_planned": false,
    "start_raw": "8月22日（予定）",
    "move_in": "１０月下旬",
    "builder": "（一社）全国木造建設事業協会",
@@ -2065,7 +2156,7 @@
    "structure": "木造・平屋",
    "hall": "",
    "start_date": "2026-08-22",
-   "start_planned": true,
+   "start_planned": false,
    "start_raw": "8月22日（予定）",
    "move_in": "１０月下旬",
    "builder": "（一社）熊本県優良住宅協会",
@@ -2078,10 +2169,49 @@
    "structure": "軽量鉄骨造・平屋",
    "hall": "",
    "start_date": "2026-08-22",
-   "start_planned": true,
+   "start_planned": false,
    "start_raw": "8月22日（予定）",
    "move_in": "１０月中旬",
    "builder": "（一社）プレハブ建築協会",
+   "note": "みんなの家（談話室）併設"
+  },
+  {
+   "muni": "宇土市",
+   "name": "（仮称）高柳仮設団地",
+   "units": 45,
+   "structure": "木造・平屋",
+   "hall": "",
+   "start_date": "2026-08-29",
+   "start_planned": false,
+   "start_raw": "8月29日",
+   "move_in": "１１月上旬",
+   "builder": "（一社）熊本県優良住宅協会",
+   "note": "みんなの家（談話室）併設"
+  },
+  {
+   "muni": "宇城市",
+   "name": "（仮称）小川駅西仮設団地",
+   "units": 20,
+   "structure": "木造・平屋",
+   "hall": "",
+   "start_date": "2026-08-29",
+   "start_planned": false,
+   "start_raw": "8月29日",
+   "move_in": "１１月中旬",
+   "builder": "（一社）全国木造建設事業協会",
+   "note": "みんなの家（談話室）併設"
+  },
+  {
+   "muni": "八代市",
+   "name": "（仮称）鏡ヶ池仮設団地",
+   "units": 34,
+   "structure": "木造・平屋",
+   "hall": "",
+   "start_date": "2026-08-26",
+   "start_planned": false,
+   "start_raw": "8月26日",
+   "move_in": "１０月下旬",
+   "builder": "（一社）全国木造建設事業協会",
    "note": "みんなの家（談話室）併設"
   }
  ]

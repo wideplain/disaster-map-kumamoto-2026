@@ -516,7 +516,13 @@ def report_start_date(report_text, bullets):
     # 本文の書き出し（本文中で繰り返される「令和８年熊本地震」）以降だけを対象にする
     body_start = flat.find("令和", flat.find("令和") + 1)
     body = flat[body_start:] if body_start != -1 else flat
-    action_m = re.search(r"(\d{1,2})日[^。]*?着手(することとなりました|する予定です|予定です)", body)
+    # 「新たに工事着手する仮設住宅団地の概要」以降には、既存団地の第1期/第2期
+    # 着手日を書いた別表（「建設戸数を追加する団地概要」）が続くことがあり、
+    # そちらの日付（例:「8月3日着手」）を誤って拾わないよう、冒頭の告知文
+    # （新規団地の着手日を最初に述べる段落）だけを対象にする
+    heading_idx = body.find("新たに工事着手する仮設住宅団地の概要")
+    announce = body[:heading_idx] if heading_idx != -1 else body
+    action_m = re.search(r"(\d{1,2})日[^。]*?着手(することとなりました|する予定です|予定です|します)", announce)
     if not action_m:
         return None, False
     year = 2018 + int(issue_m.group(1))
@@ -532,6 +538,73 @@ def report_start_date(report_text, bullets):
     return date, started
 
 
+def parse_housing_report_additions(report_text):
+    r"""報道資料の「建設戸数を追加する団地概要」表（既存団地への第2期増戸）を読む。
+
+    行は「団地名 第1期戸数 第2期戸数 合計戸数」の並びで、合計を返す
+    （呼び出し側は units を増分加算ではなくこの合計値へ置き換える。
+    同じ報道資料を読み直しても二重加算にならないようにするため）。
+    """
+    m = re.search(r"建設戸数を追加する団地概要(.*?)(?=\Z|※|【参)", report_text, re.S)
+    if not m:
+        return [], None
+    sec = m.group(1)
+    phase2_dates = re.findall(r"（\s*(\d{1,2})月\s*(\d{1,2})日着手\s*）", sec)
+    phase2_date = None
+    if len(phase2_dates) >= 2:
+        mo, d = phase2_dates[-1]
+        phase2_date = (int(mo), int(d))
+
+    out = []
+    for line in sec.split(chr(10)):
+        line_m = re.match(r"^(\S+仮設団地)\s+([0-9０-９]+)戸\s+([0-9０-９]+)戸\s+([0-9０-９]+)戸$", line.strip())
+        if line_m:
+            name, _phase1, _phase2, total = line_m.groups()
+            out.append({"name": name, "total_units": int(unicodedata.normalize("NFKC", total))})
+    return out, phase2_date
+
+
+def apply_housing_additions(housing, report_texts, bullets):
+    """既知団地への戸数追加（第2期増戸）を、報道資料を読める範囲で反映する。
+
+    units はカード表示用に常に最新の合計値を持たせるが、時系列の指標
+    （応急住宅 着工戸数）は各時点で本当に着工済みだった戸数を出す必要がある。
+    そのため増戸のたびに unit_history へ (発効日, その日以降の合計戸数) を
+    積み、build_timeline.py 側は unit_history から時点ごとの値を引く。
+    最初の増戸を検出した時点で、変更前の値を着手日の実績として履歴の起点にする
+    （そうしないと着手日〜増戸日の間も新しい合計値のままになってしまう）。
+    """
+    changed = []
+    for text in report_texts:
+        additions, phase2_date = parse_housing_report_additions(text)
+        if not additions:
+            continue
+        started = True
+        date = None
+        if phase2_date:
+            year = datetime.now(JST).year
+            date = f"{year:04d}-{phase2_date[0]:02d}-{phase2_date[1]:02d}"
+            bullet = next((b for b in bullets if b["date"] == date), None)
+            started = bullet["started"] if bullet is not None else True
+        if not started:
+            continue  # まだ「予定」段階の増戸は数えない
+        for add in additions:
+            add_key = housing_team_key(add["name"])
+            for h in housing:
+                if housing_team_key(h["name"]) != add_key:
+                    continue
+                if not h.get("unit_history"):
+                    h["unit_history"] = [{"date": h.get("start_date"), "units": h.get("units")}]
+                already = {entry["date"] for entry in h["unit_history"]}
+                if date and date not in already:
+                    h["unit_history"].append({"date": date, "units": add["total_units"]})
+                    h["unit_history"].sort(key=lambda e: e["date"] or "")
+                if h.get("units") != add["total_units"]:
+                    changed.append((h["name"], h.get("units"), add["total_units"]))
+                    h["units"] = add["total_units"]
+    return changed
+
+
 _MUNI_NAMES_CACHE = None
 
 
@@ -543,18 +616,44 @@ def load_muni_names():
     return _MUNI_NAMES_CACHE
 
 
+def housing_team_key(name):
+    """団地名の同一判定キー。
+
+    最初のHTML表スクレイプ時代は「(仮称)宇城市当尾仮設団地」のように
+    市町村名を埋め込んだ名称だったが、8/21以降のソースである報道資料PDFは
+    常に市町村名なしの短い名称（「（仮称）当尾仮設団地」）しか出さない。
+    全角/半角括弧のゆれ(NFKC)に加え、先頭の市町村名も取り除いた「核」の
+    部分文字列で同一判定できるようにする。
+    """
+    norm = unicodedata.normalize("NFKC", name)
+    core = re.sub(r"^\(仮称\)", "", norm)
+    for muni in load_muni_names():
+        if core.startswith(muni):
+            core = core[len(muni):]
+            break
+    return core
+
+
 def fetch_new_housing_from_reports(page, known_names, bullets, offline):
-    """既知の団地名に無い団地を、新しい報道資料から順に探して追加分だけ返す。"""
+    """既知の団地名に無い団地を、新しい報道資料から順に探して追加分だけ返す。
+
+    あわせて各報道資料の本文もまとめて返す（呼び出し側が
+    apply_housing_additions() で第2期増戸の反映に再利用するため。
+    どのPDFも新規団地探しの過程で既にダウンロード済みなので、
+    ここでは追加のネットワークアクセスは発生しない）。
+    """
     new_entries = []
+    report_texts = []
     for url, label in find_housing_report_links(page):
         key_m = re.search(r"attachment/(\d+)\.pdf", url)
         key = key_m.group(1) if key_m else re.sub(r"\W+", "_", label)
         pdf_path = get_raw(f"housing_report_{key}", url, "pdf", offline)
         teams, text = parse_housing_report_pdf(pdf_path)
+        report_texts.append(text)
         date, started = report_start_date(text, bullets)
         for t in teams:
-            norm_name = unicodedata.normalize("NFKC", t["name"])
-            if norm_name in known_names:
+            team_key = housing_team_key(t["name"])
+            if team_key in known_names:
                 continue
             muni = detect_muni(t["address"], load_muni_names())
             if not muni:
@@ -578,8 +677,8 @@ def fetch_new_housing_from_reports(page, known_names, bullets, offline):
                     "note": t["note"],
                 }
             )
-            known_names.add(norm_name)
-    return new_entries
+            known_names.add(team_key)
+    return new_entries, report_texts
 
 
 # ---------------------------------------------------------------------------
@@ -812,11 +911,15 @@ def main():
     if confirmed:
         print(f"  着手確認（新着概要より）: {confirmed} 団地の「予定」を外しました")
 
-    known_names = {unicodedata.normalize("NFKC", h["name"]) for h in housing}
-    new_from_reports = fetch_new_housing_from_reports(page, known_names, bullets, args.offline)
+    known_names = {housing_team_key(h["name"]) for h in housing}
+    new_from_reports, report_texts = fetch_new_housing_from_reports(page, known_names, bullets, args.offline)
     if new_from_reports:
         print(f"  報道資料から新規団地を追加: {len(new_from_reports)} 団地（{[h['name'] for h in new_from_reports]}）")
         housing.extend(new_from_reports)
+
+    additions = apply_housing_additions(housing, report_texts, bullets)
+    if additions:
+        print(f"  報道資料から増戸を反映: {additions}")
 
     sources["housing"] = {
         "name": PAGES["housing"]["name"],
